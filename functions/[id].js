@@ -1,19 +1,26 @@
 import { escapeHtml } from "./_lib/util.js";
-import { iconSvg } from "./_lib/icons.js";
 
-// File statis (style.css, app.js, favicon.svg, dst) sudah otomatis dilayani
-// langsung dari /public oleh Cloudflare Pages, jadi request itu nggak pernah
-// nyampe ke Function ini — nggak makan kuota.
+// File statis (style.css, app.js, favicon.svg, dst) diserve langsung dari public
+// jika dipanggil via static asset router. Namun di Pages Functions [id].js,
+// request static assets yang tidak sengaja kecocok harus dilewatkan.
+
+const RESERVED_PATHS = ["style.css", "app.js", "favicon.svg", "robots.txt"];
 
 export async function onRequestGet(context) {
   const { request, env, params } = context;
+
+  const id = params.id;
+
+  if (RESERVED_PATHS.includes(id)) {
+    return context.next();
+  }
+
   const cache = caches.default;
 
   // 1) Cek cache edge dulu. Kalau HIT, langsung balikin — nol query ke D1.
   const cached = await cache.match(request);
   if (cached) return cached;
 
-  const id = params.id;
   let response;
 
   if (!env.DB) {
@@ -41,15 +48,9 @@ export async function onRequestGet(context) {
     response = htmlResponse(
       renderPage(row, servers),
       200,
-      // Halaman dianggap tetap/immutable begitu dibuat -> cache lama & agresif.
-      // Kalau nanti nambah fitur edit, purge cache URL-nya lewat dashboard
-      // Cloudflare (Caching -> Configuration -> Purge by URL).
       "public, max-age=31536000, s-maxage=31536000, immutable"
     );
 
-    // Best-effort view counter. Ini CUMA jalan pas cache MISS, jadi setelah
-    // halaman "dingin" di edge cache, angka views nggak lagi nambah persis
-    // per-visit. Trade-off sadar demi hemat kuota D1 write.
     context.waitUntil(
       env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run()
     );
@@ -93,9 +94,7 @@ function renderPage(row, servers) {
   const items = servers
     .map(
       (s) => `
-      <a class="lane" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow"
-         style="--lane-accent:${escapeHtml(s.color)}">
-        <span class="lane-badge">${iconSvg(s.icon, 20)}</span>
+      <a class="lane" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow">
         <span class="lane-label">${escapeHtml(s.label)}</span>
         <span class="lane-arrow" aria-hidden="true">↗</span>
       </a>`
@@ -109,8 +108,6 @@ function renderPage(row, servers) {
         <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
         <div class="tracking">PAKET&nbsp;#<span>${escapeHtml(row.id)}</span></div>
       </header>
-
-      <div class="perforation" aria-hidden="true"></div>
 
       <div class="ticket-body">
         <h1 class="pkg-title">${escapeHtml(title)}</h1>
@@ -140,7 +137,6 @@ function renderNotFound(id) {
         <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
         <div class="tracking">PAKET&nbsp;#<span>${escapeHtml(id)}</span></div>
       </header>
-      <div class="perforation" aria-hidden="true"></div>
       <div class="ticket-body state-empty">
         <h1 class="pkg-title">Halaman nggak ketemu</h1>
         <p class="pkg-desc">Kode <strong>${escapeHtml(id)}</strong> nggak ada di database, salah ketik, atau memang belum pernah dibuat.</p>
