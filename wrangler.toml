@@ -1,0 +1,12 @@
+name = "dlhub"
+pages_build_output_dir = "public"
+compatibility_date = "2024-09-23"
+
+# Dipakai untuk `wrangler pages dev` (development lokal).
+# Untuk PRODUCTION, binding D1 di-set lewat Cloudflare Dashboard:
+# Pages project -> Settings -> Functions -> D1 database bindings
+# (Nama binding harus "DB" biar cocok sama kode di /functions)
+[[d1_databases]]
+binding = "DB"
+database_name = "dlhub-db"
+database_id = "GANTI_DENGAN_DATABASE_ID_KAMU"
