@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DLHUB — Buat halaman pilihan server download</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="form-view">
+<main class="wrap home-wrap">
+  <div class="ticket">
+    <header class="ticket-head">
+      <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
+      <div class="tracking">MANIFEST&nbsp;BARU</div>
+    </header>
+    <div class="perforation" aria-hidden="true"></div>
+
+    <div class="ticket-body">
+      <h1 class="pkg-title">Buat halaman download</h1>
+      <p class="tagline">Satu link, banyak server pilihan. Bagikan satu URL — orang lain tinggal pilih mirror yang paling enak buat mereka.</p>
+
+      <form id="createForm" novalidate>
+        <div class="admin-row">
+          <input type="password" id="adminKey" placeholder="Admin key (kalau di-set)" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="title">Nama paket <span class="field-optional">(opsional)</span></label>
+          <input type="text" id="title" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
+        </div>
+
+        <div class="field">
+          <label for="description">Catatan <span class="field-optional">(opsional)</span></label>
+          <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
+        </div>
+
+        <div class="field" style="margin-bottom:8px;">
+          <label>Server download</label>
+        </div>
+
+        <div class="lane-rows" id="laneRows"></div>
+        <button type="button" class="add-lane-btn" id="addLane">+ Tambah server</button>
+
+        <div class="form-error" id="formError"></div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Buat halaman</button>
+      </form>
+
+      <div class="result-box" id="resultBox">
+        <p class="result-label">✓ Halaman berhasil dibuat</p>
+        <div class="result-link-row">
+          <input type="text" id="resultLink" readonly>
+        </div>
+        <div class="result-actions">
+          <button type="button" class="primary" id="copyBtn">Salin link</button>
+          <a href="#" target="_blank" rel="noopener" id="openBtn">Buka halaman</a>
+          <button type="button" id="resetBtn">Buat lagi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="page-footer">Cloudflare Pages + D1</footer>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
