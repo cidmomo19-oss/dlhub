@@ -9,4 +9,4 @@ compatibility_date = "2024-09-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "dlhub-db"
-database_id = "GANTI_DENGAN_DATABASE_ID_KAMU"
+database_id = "d594648f-3466-4464-ae57-dfc04126fd67"
