@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
-<head> 
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DLHUB — Buat halaman pilihan server download</title>
+<title>DLHUB — Buat Halaman Download</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
@@ -13,50 +13,63 @@
   <div class="ticket">
     <header class="ticket-head">
       <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
-      <div class="tracking">MANIFEST&nbsp;BARU</div>
+      <div class="tracking">CREATOR&nbsp;PORTAL</div>
     </header>
-    <div class="perforation" aria-hidden="true"></div>
 
     <div class="ticket-body">
-      <h1 class="pkg-title">Buat halaman download</h1>
-      <p class="tagline">Satu link, banyak server pilihan. Bagikan satu URL — orang lain tinggal pilih mirror yang paling enak buat mereka.</p>
+      <!-- Admin Key Gate Screen -->
+      <div id="authGate" class="auth-gate">
+        <h1 class="auth-gate-title">Akses Admin Key</h1>
+        <p class="auth-gate-desc">Masukkan Admin Key terlebih dahulu untuk membuka halaman pembuatan download link.</p>
+        
+        <form id="authForm">
+          <div class="field">
+            <label for="adminKeyGate">Admin Key</label>
+            <input type="password" id="adminKeyGate" placeholder="Masukkan Admin Key" autocomplete="current-password" required>
+          </div>
+          <div class="form-error" id="authError"></div>
+          <button type="submit" class="btn-primary" id="authSubmitBtn">Masuk Halaman Create</button>
+        </form>
+      </div>
 
-      <form id="createForm" novalidate>
-        <div class="admin-row">
-          <input type="password" id="adminKey" placeholder="Admin key (kalau di-set)" autocomplete="off">
-        </div>
+      <!-- Create Form Screen (Hidden until authenticated or if no key required) -->
+      <div id="createScreen" style="display: none;">
+        <h1 class="pkg-title">Buat Halaman Download</h1>
+        <p class="tagline">Satu link, banyak server pilihan. Bagikan satu URL — orang lain tinggal pilih mirror yang paling cepat buat mereka.</p>
 
-        <div class="field">
-          <label for="title">Nama paket <span class="field-optional">(opsional)</span></label>
-          <input type="text" id="title" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
-        </div>
+        <form id="createForm" novalidate>
+          <div class="field">
+            <label for="title">Nama Paket <span class="field-optional">(opsional)</span></label>
+            <input type="text" id="title" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
+          </div>
 
-        <div class="field">
-          <label for="description">Catatan <span class="field-optional">(opsional)</span></label>
-          <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
-        </div>
+          <div class="field">
+            <label for="description">Catatan <span class="field-optional">(opsional)</span></label>
+            <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
+          </div>
 
-        <div class="field" style="margin-bottom:8px;">
-          <label>Server download</label>
-        </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>Server Download</label>
+          </div>
 
-        <div class="lane-rows" id="laneRows"></div>
-        <button type="button" class="add-lane-btn" id="addLane">+ Tambah server</button>
+          <div class="lane-rows" id="laneRows"></div>
+          <button type="button" class="add-lane-btn" id="addLane">+ Tambah Server</button>
 
-        <div class="form-error" id="formError"></div>
+          <div class="form-error" id="formError"></div>
 
-        <button type="submit" class="submit-btn" id="submitBtn">Buat halaman</button>
-      </form>
+          <button type="submit" class="submit-btn" id="submitBtn">Buat Halaman</button>
+        </form>
 
-      <div class="result-box" id="resultBox">
-        <p class="result-label">✓ Halaman berhasil dibuat</p>
-        <div class="result-link-row">
-          <input type="text" id="resultLink" readonly>
-        </div>
-        <div class="result-actions">
-          <button type="button" class="primary" id="copyBtn">Salin link</button>
-          <a href="#" target="_blank" rel="noopener" id="openBtn">Buka halaman</a>
-          <button type="button" id="resetBtn">Buat lagi</button>
+        <div class="result-box" id="resultBox">
+          <p class="result-label">✓ Halaman Berhasil Dibuat</p>
+          <div class="result-link-row">
+            <input type="text" id="resultLink" readonly>
+          </div>
+          <div class="result-actions">
+            <button type="button" class="primary" id="copyBtn">Salin Link</button>
+            <a href="#" target="_blank" rel="noopener" id="openBtn" class="btn-secondary">Buka Halaman</a>
+            <button type="button" id="resetBtn" class="btn-secondary">Buat Lagi</button>
+          </div>
         </div>
       </div>
     </div>
