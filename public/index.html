@@ -6,14 +6,18 @@
 <title>DLHUB — Buat Halaman Download</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- Font Baru yang lebih modern -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="form-view">
 <main class="wrap home-wrap">
   <div class="ticket">
     <header class="ticket-head">
-      <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
-      <div class="tracking">CREATOR&nbsp;PORTAL</div>
+      <div class="brand"><span class="brand-mark">✦</span> DLHUB</div>
+      <div class="tracking">CREATOR STUDIO</div>
     </header>
 
     <div class="ticket-body">
@@ -28,11 +32,11 @@
             <input type="password" id="adminKeyGate" placeholder="Masukkan Admin Key" autocomplete="current-password" required>
           </div>
           <div class="form-error" id="authError"></div>
-          <button type="submit" class="btn-primary" id="authSubmitBtn">Masuk Halaman Create</button>
+          <button type="submit" class="btn-primary" id="authSubmitBtn">Buka Akses</button>
         </form>
       </div>
 
-      <!-- Create Form Screen (Hidden until authenticated or if no key required) -->
+      <!-- Create Form Screen -->
       <div id="createScreen" style="display: none;">
         <h1 class="pkg-title">Buat Halaman Download</h1>
         <p class="tagline">Satu link, banyak server pilihan. Bagikan satu URL — orang lain tinggal pilih mirror yang paling cepat buat mereka.</p>
@@ -57,11 +61,14 @@
 
           <div class="form-error" id="formError"></div>
 
-          <button type="submit" class="submit-btn" id="submitBtn">Buat Halaman</button>
+          <button type="submit" class="submit-btn" id="submitBtn">Generate Link Halaman</button>
         </form>
 
         <div class="result-box" id="resultBox">
-          <p class="result-label">✓ Halaman Berhasil Dibuat</p>
+          <p class="result-label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Halaman Berhasil Dibuat
+          </p>
           <div class="result-link-row">
             <input type="text" id="resultLink" readonly>
           </div>
