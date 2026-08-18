@@ -100,6 +100,24 @@ const openBtn = document.getElementById("openBtn");
 const copyBtn = document.getElementById("copyBtn");
 const resetBtn = document.getElementById("resetBtn");
 const toast = document.getElementById("toast");
+const thumbnailInput = document.getElementById("thumbnail");
+const thumbPreview = document.getElementById("thumbPreview");
+const thumbPreviewImg = document.getElementById("thumbPreviewImg");
+
+thumbnailInput.addEventListener("input", () => {
+  const url = thumbnailInput.value.trim();
+  if (!url) {
+    thumbPreview.style.display = "none";
+    return;
+  }
+  thumbPreviewImg.src = url;
+});
+thumbPreviewImg.addEventListener("load", () => {
+  thumbPreview.style.display = "";
+});
+thumbPreviewImg.addEventListener("error", () => {
+  thumbPreview.style.display = "none";
+});
 
 function hostOptionsHtml() {
   return HOSTS.map((h) => `<option value="${h.value}">${h.label}</option>`).join("");
@@ -169,6 +187,7 @@ form.addEventListener("submit", async (e) => {
 
   const title = document.getElementById("title").value.trim();
   const description = document.getElementById("description").value.trim();
+  const thumbnail = thumbnailInput.value.trim();
 
   const servers = [];
   laneRows.querySelectorAll(".lane-row").forEach((row) => {
@@ -195,7 +214,7 @@ form.addEventListener("submit", async (e) => {
         "Content-Type": "application/json",
         "x-admin-key": verifiedKey,
       },
-      body: JSON.stringify({ title, description, servers }),
+      body: JSON.stringify({ title, description, thumbnail, servers }),
     });
     const data = await res.json();
 
@@ -232,5 +251,7 @@ resetBtn.addEventListener("click", () => {
   form.style.display = "";
   document.getElementById("title").value = "";
   document.getElementById("description").value = "";
+  thumbnailInput.value = "";
+  thumbPreview.style.display = "none";
   resetLanes();
 });
