@@ -72,36 +72,6 @@ a { color: inherit; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--border);
-}
-
-.logo-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: var(--accent-dim);
-  color: var(--accent);
-  font-family: var(--font);
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: -0.02em;
-}
-
-.logo-text {
-  font-weight: 600;
-  font-size: 13.5px;
-  letter-spacing: 0.02em;
-  color: var(--text-dim);
-}
-
 .card-body { padding: 22px; }
 
 /* ---------- Download page ---------- */
@@ -133,7 +103,6 @@ a { color: inherit; }
 }
 
 .server-btn {
-  --dot: var(--accent);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -152,14 +121,6 @@ a { color: inherit; }
   transform: translateY(-1px);
 }
 
-.server-dot {
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
-  border-radius: 50%;
-  background: var(--dot);
-}
-
 .server-btn-label {
   flex: 1;
   font-weight: 500;
@@ -167,25 +128,19 @@ a { color: inherit; }
   overflow-wrap: anywhere;
 }
 
-.server-btn-arrow {
+.server-btn-icon {
+  display: inline-flex;
   color: var(--text-faint);
-  font-size: 14px;
-  transition: transform .15s ease, color .15s ease;
+  transition: color .15s ease;
 }
 
-.server-btn:hover .server-btn-arrow { color: var(--text-dim); transform: translate(2px,-2px); }
+.server-btn:hover .server-btn-icon { color: var(--accent); }
 
 .hint {
   margin: 20px 0 0;
   font-size: 12.5px;
   color: var(--text-faint);
   line-height: 1.6;
-}
-
-.footer {
-  margin-top: 16px;
-  font-size: 12px;
-  color: var(--text-faint);
 }
 
 .empty-state { text-align: center; padding: 8px 4px 4px; }
@@ -417,5 +372,5 @@ a { color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .card { animation: none; }
-  .server-btn, .server-btn-arrow, .submit-btn { transition: none; }
+  .server-btn, .server-btn-icon, .submit-btn { transition: none; }
 }
