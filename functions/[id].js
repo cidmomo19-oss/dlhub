@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
   }
 
   const row = await env.DB.prepare(
-    "SELECT id, title, description, servers, views FROM links WHERE id = ?"
+    "SELECT id, title, description, thumbnail, servers, views FROM links WHERE id = ?"
   )
     .bind(id)
     .first();
@@ -88,6 +88,7 @@ ${body}
 function renderPage(row, servers) {
   const title = row.title?.trim() || "Paket unduhan";
   const description = row.description?.trim() || "";
+  const thumbnail = row.thumbnail?.trim() || "";
 
   const downloadIcon =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>';
@@ -102,9 +103,14 @@ function renderPage(row, servers) {
     )
     .join("");
 
+  const thumbnailHtml = thumbnail
+    ? `<div class="thumbnail"><img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"></div>`
+    : "";
+
   const body = `
   <main class="page">
     <div class="card">
+      ${thumbnailHtml}
       <div class="card-body">
         <h1 class="title">${escapeHtml(title)}</h1>
         ${description ? `<p class="desc">${escapeHtml(description)}</p>` : ""}
