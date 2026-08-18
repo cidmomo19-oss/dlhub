@@ -1,143 +1,159 @@
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+import { escapeHtml } from "./_lib/util.js";
+
+// File statis (style.css, app.js, favicon.svg, dst) sudah otomatis dilayani
+// langsung dari /public oleh Cloudflare Pages, jadi request itu nggak pernah
+// nyampe ke Function ini — nggak makan kuota.
 
 export async function onRequestGet(context) {
-  const { params, env, request } = context;
-  const id = params.id;
-
-  // Cek cache Cloudflare terlebih dahulu
+  const { request, env, params } = context;
   const cache = caches.default;
-  const cachedResponse = await cache.match(request);
-  if (cachedResponse) {
-    return cachedResponse;
+
+  // 1) Cek cache edge dulu. Kalau HIT, langsung balikin — nol query ke D1.
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  const id = params.id;
+  let response;
+
+  if (!env.DB) {
+    response = htmlResponse(renderError("D1 belum ke-bind ke project ini."), 500, "public, max-age=10");
+    return response;
   }
 
-  // Query D1 Database
-  let link = null;
-  try {
-    link = await env.DB.prepare(
-      "SELECT * FROM links WHERE id = ?"
-    ).bind(id).first();
-  } catch (err) {
-    return new Response("Database Error", { status: 500 });
-  }
+  const row = await env.DB.prepare(
+    "SELECT id, title, description, servers, views FROM links WHERE id = ?"
+  )
+    .bind(id)
+    .first();
 
-  // Jika ID tidak ditemukan
-  if (!link) {
-    const notFoundHtml = `<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Link Tidak Ditemukan — DLHUB</title>
-  <meta name="robots" content="noindex, nofollow">
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <main class="wrap">
-    <div class="ticket">
-      <header class="ticket-head">
-        <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
-        <div class="tracking">404 NOT FOUND</div>
-      </header>
-      <div class="ticket-body state-empty">
-        <h1 class="pkg-title">Link Tidak Ditemukan</h1>
-        <p class="pkg-desc">Halaman yang kamu cari mungkin sudah dihapus atau salah alamat URL.</p>
-        <a href="/" class="btn-back">Buat Link Baru</a>
-      </div>
-    </div>
-  </main>
-</body>
-</html>`;
-    return new Response(notFoundHtml, {
-      status: 404,
-      headers: { "Content-Type": "text/html; charset=utf-8" }
-    });
-  }
-
-  // Update counter views (best effort, non-blocking)
-  context.waitUntil(
-    env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run()
-  );
-
-  let servers = [];
-  try {
-    servers = JSON.parse(link.servers || link.lanes || "[]");
-  } catch (e) {
-    servers = [];
-  }
-
-  const title = link.title || "File Download";
-  const desc = link.description || "";
-
-  // Render daftar server dengan icon download SVG
-  const lanesHtml = servers.map(item => `
-    <a href="${escapeHtml(item.url)}" class="lane" target="_blank" rel="noopener noreferrer">
-      <span class="lane-label">${escapeHtml(item.label || item.name || 'Download Server')}</span>
-      <span class="lane-arrow" title="Download">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-      </span>
-    </a>
-  `).join("");
-
-  const pageHtml = `<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>${escapeHtml(title)} — DLHUB</title>
-  <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <main class="wrap">
-    <div class="ticket">
-      <header class="ticket-head">
-        <div class="brand"><span class="brand-mark">⬡</span> DLHUB</div>
-        <div class="tracking">ID: <span>${escapeHtml(id)}</span></div>
-      </header>
-
-      <div class="ticket-body">
-        <h1 class="pkg-title">${escapeHtml(title)}</h1>
-        ${desc ? `<p class="pkg-desc">${escapeHtml(desc)}</p>` : ''}
-
-        <div class="lanes-label">
-          <span>PILIH SERVER</span>
-          <span class="lanes-count">${servers.length} SERVER</span>
-        </div>
-
-        <div class="lanes">
-          ${lanesHtml}
-        </div>
-      </div>
-    </div>
-    <footer class="page-footer">Cloudflare Pages + D1</footer>
-  </main>
-</body>
-</html>`;
-
-  const response = new Response(pageHtml, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=31536000, immutable"
+  if (!row) {
+    // Cache pendek buat 404, biar ID ngasal/nyasar nggak terus-terusan hit D1
+    response = htmlResponse(renderNotFound(id), 404, "public, max-age=120");
+  } else {
+    let servers = [];
+    try {
+      servers = JSON.parse(row.servers);
+    } catch {
+      servers = [];
     }
-  });
 
-  // Simpan ke Cache Cloudflare di edge
+    response = htmlResponse(
+      renderPage(row, servers),
+      200,
+      // Halaman dianggap tetap/immutable begitu dibuat -> cache lama & agresif.
+      // Kalau nanti nambah fitur edit, purge cache URL-nya lewat dashboard
+      // Cloudflare (Caching -> Configuration -> Purge by URL).
+      "public, max-age=31536000, s-maxage=31536000, immutable"
+    );
+
+    // Best-effort view counter. Ini CUMA jalan pas cache MISS, jadi setelah
+    // halaman "dingin" di edge cache, angka views nggak lagi nambah persis
+    // per-visit. Trade-off sadar demi hemat kuota D1 write.
+    context.waitUntil(
+      env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run()
+    );
+  }
+
   context.waitUntil(cache.put(request, response.clone()));
-
   return response;
+}
+
+function htmlResponse(html, status, cacheControl) {
+  return new Response(html, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=UTF-8",
+      "cache-control": cacheControl,
+    },
+  });
+}
+
+function layout({ title, body }) {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${escapeHtml(title)}</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+${body}
+</body>
+</html>`;
+}
+
+function renderPage(row, servers) {
+  const title = row.title?.trim() || "Paket unduhan";
+  const description = row.description?.trim() || "";
+
+  const items = servers
+    .map(
+      (s) => `
+      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow"
+         style="--dot:${escapeHtml(s.color)}">
+        <span class="server-dot" aria-hidden="true"></span>
+        <span class="server-btn-label">${escapeHtml(s.label)}</span>
+        <span class="server-btn-arrow" aria-hidden="true">↗</span>
+      </a>`
+    )
+    .join("");
+
+  const body = `
+  <main class="page">
+    <div class="card">
+      <header class="card-header">
+        <span class="logo-mark">DL</span>
+        <span class="logo-text">DLHUB</span>
+      </header>
+
+      <div class="card-body">
+        <h1 class="title">${escapeHtml(title)}</h1>
+        ${description ? `<p class="desc">${escapeHtml(description)}</p>` : ""}
+
+        <p class="servers-label">Server download (${servers.length})</p>
+        <div class="server-list">
+          ${items}
+        </div>
+
+        <p class="hint">Pilih salah satu server di atas untuk mulai mengunduh. Kalau satu server error atau lambat, coba server lain di daftar.</p>
+      </div>
+    </div>
+    <footer class="footer">Dibuat dengan DLHUB</footer>
+  </main>`;
+
+  return layout({ title: `${title} — Pilih Server Download`, body });
+}
+
+function renderNotFound(id) {
+  const body = `
+  <main class="page">
+    <div class="card">
+      <header class="card-header">
+        <span class="logo-mark">DL</span>
+        <span class="logo-text">DLHUB</span>
+      </header>
+      <div class="card-body empty-state">
+        <h1 class="title">Halaman nggak ketemu</h1>
+        <p class="desc">Kode <strong>${escapeHtml(id)}</strong> nggak ada di database, salah ketik, atau memang belum pernah dibuat.</p>
+        <a class="back-link" href="/">← Buat halaman baru</a>
+      </div>
+    </div>
+  </main>`;
+  return layout({ title: "Halaman tidak ditemukan — DLHUB", body });
+}
+
+function renderError(message) {
+  const body = `
+  <main class="page">
+    <div class="card">
+      <div class="card-body empty-state">
+        <h1 class="title">Terjadi kesalahan</h1>
+        <p class="desc">${escapeHtml(message)}</p>
+      </div>
+    </div>
+  </main>`;
+  return layout({ title: "Error — DLHUB", body });
 }
