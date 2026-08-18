@@ -89,14 +89,15 @@ function renderPage(row, servers) {
   const title = row.title?.trim() || "Paket unduhan";
   const description = row.description?.trim() || "";
 
+  const downloadIcon =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>';
+
   const items = servers
     .map(
       (s) => `
-      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow"
-         style="--dot:${escapeHtml(s.color)}">
-        <span class="server-dot" aria-hidden="true"></span>
+      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow">
         <span class="server-btn-label">${escapeHtml(s.label)}</span>
-        <span class="server-btn-arrow" aria-hidden="true">↗</span>
+        <span class="server-btn-icon" aria-hidden="true">${downloadIcon}</span>
       </a>`
     )
     .join("");
@@ -104,11 +105,6 @@ function renderPage(row, servers) {
   const body = `
   <main class="page">
     <div class="card">
-      <header class="card-header">
-        <span class="logo-mark">DL</span>
-        <span class="logo-text">DLHUB</span>
-      </header>
-
       <div class="card-body">
         <h1 class="title">${escapeHtml(title)}</h1>
         ${description ? `<p class="desc">${escapeHtml(description)}</p>` : ""}
@@ -121,7 +117,6 @@ function renderPage(row, servers) {
         <p class="hint">Pilih salah satu server di atas untuk mulai mengunduh. Kalau satu server error atau lambat, coba server lain di daftar.</p>
       </div>
     </div>
-    <footer class="footer">Dibuat dengan DLHUB</footer>
   </main>`;
 
   return layout({ title: `${title} — Pilih Server Download`, body });
@@ -131,10 +126,6 @@ function renderNotFound(id) {
   const body = `
   <main class="page">
     <div class="card">
-      <header class="card-header">
-        <span class="logo-mark">DL</span>
-        <span class="logo-text">DLHUB</span>
-      </header>
       <div class="card-body empty-state">
         <h1 class="title">Halaman nggak ketemu</h1>
         <p class="desc">Kode <strong>${escapeHtml(id)}</strong> nggak ada di database, salah ketik, atau memang belum pernah dibuat.</p>
