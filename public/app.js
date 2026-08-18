@@ -1,24 +1,94 @@
-// Preset server yang umum dipakai.
+// Preset server yang umum dipakai. Ini CUMA nentuin default label/warna pas
+// dipilih di dropdown — bebas diedit, dan bisa nambah host baru di sini
+// kapan aja (itu maksud "universal"-nya).
 const HOSTS = [
-  { value: "gofile", label: "Gofile" },
-  { value: "pixeldrain", label: "Pixeldrain" },
-  { value: "mega", label: "MEGA" },
-  { value: "terabox", label: "TeraBox" },
-  { value: "mediafire", label: "MediaFire" },
-  { value: "gdrive", label: "Google Drive" },
-  { value: "krakenfiles", label: "KrakenFiles" },
-  { value: "buzzheavier", label: "Buzzheavier" },
-  { value: "onefichier", label: "1Fichier" },
-  { value: "custom", label: "Custom" },
+  { value: "gofile", label: "Gofile", color: "#00c58e" },
+  { value: "pixeldrain", label: "Pixeldrain", color: "#29b6a8" },
+  { value: "mega", label: "MEGA", color: "#e0342d" },
+  { value: "terabox", label: "TeraBox", color: "#3b82f6" },
+  { value: "mediafire", label: "MediaFire", color: "#1299d8" },
+  { value: "gdrive", label: "Google Drive", color: "#34a853" },
+  { value: "krakenfiles", label: "KrakenFiles", color: "#7c3aed" },
+  { value: "buzzheavier", label: "Buzzheavier", color: "#f59e0b" },
+  { value: "onefichier", label: "1Fichier", color: "#0ea5e9" },
+  { value: "custom", label: "Custom", color: "#ff8a1e" },
 ];
 
-const authGate = document.getElementById("authGate");
-const authForm = document.getElementById("authForm");
-const adminKeyGateInput = document.getElementById("adminKeyGate");
-const authError = document.getElementById("authError");
-const authSubmitBtn = document.getElementById("authSubmitBtn");
+const STORAGE_KEY = "dlhub_admin_key";
 
-const createScreen = document.getElementById("createScreen");
+// ---------- Gate (admin key) ----------
+
+const gateView = document.getElementById("gateView");
+const createView = document.getElementById("createView");
+const gateForm = document.getElementById("gateForm");
+const gateKeyInput = document.getElementById("gateKey");
+const gateError = document.getElementById("gateError");
+const gateSubmitBtn = document.getElementById("gateSubmitBtn");
+
+let verifiedKey = "";
+
+async function verifyKey(key) {
+  const res = await fetch("/api/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok && data.ok, error: data.error };
+}
+
+function unlock(key) {
+  verifiedKey = key;
+  gateView.style.display = "none";
+  createView.style.display = "";
+}
+
+function showGateError(msg) {
+  gateError.textContent = msg;
+  gateError.classList.add("show");
+}
+
+gateForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  gateError.classList.remove("show");
+  const key = gateKeyInput.value;
+  if (!key) return;
+
+  gateSubmitBtn.disabled = true;
+  gateSubmitBtn.textContent = "Mengecek...";
+  try {
+    const { ok, error } = await verifyKey(key);
+    if (!ok) {
+      showGateError(error || "Admin key salah.");
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, key);
+    unlock(key);
+  } catch {
+    showGateError("Nggak bisa konek ke server. Coba lagi.");
+  } finally {
+    gateSubmitBtn.disabled = false;
+    gateSubmitBtn.textContent = "Masuk";
+  }
+});
+
+(async function initGate() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return;
+  try {
+    const { ok } = await verifyKey(saved);
+    if (ok) {
+      unlock(saved);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // Offline/error pas cek awal — biarin gate tampil, user bisa coba manual.
+  }
+})();
+
+// ---------- Create form (baru aktif setelah gate ke-buka) ----------
+
 const laneRows = document.getElementById("laneRows");
 const addLaneBtn = document.getElementById("addLane");
 const form = document.getElementById("createForm");
@@ -30,8 +100,6 @@ const openBtn = document.getElementById("openBtn");
 const copyBtn = document.getElementById("copyBtn");
 const resetBtn = document.getElementById("resetBtn");
 const toast = document.getElementById("toast");
-
-let currentAdminKey = localStorage.getItem("dlhub_admin_key") || "";
 
 function hostOptionsHtml() {
   return HOSTS.map((h) => `<option value="${h.value}">${h.label}</option>`).join("");
@@ -78,67 +146,7 @@ function resetLanes() {
   addLaneRow("gofile");
   addLaneRow("terabox");
 }
-
-function showCreateScreen() {
-  authGate.style.display = "none";
-  createScreen.style.display = "block";
-  resetLanes();
-}
-
-function showAuthGate() {
-  authGate.style.display = "flex";
-  createScreen.style.display = "none";
-  if (currentAdminKey) {
-    adminKeyGateInput.value = currentAdminKey;
-  }
-}
-
-async function verifyAndProceed(keyToTest) {
-  authError.textContent = "";
-  authError.classList.remove("show");
-  authSubmitBtn.disabled = true;
-  authSubmitBtn.textContent = "Memverifikasi...";
-
-  try {
-    const res = await fetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: keyToTest }),
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      currentAdminKey = keyToTest;
-      if (keyToTest) localStorage.setItem("dlhub_admin_key", keyToTest);
-      showCreateScreen();
-    } else {
-      authError.textContent = data.error || "Admin Key tidak valid.";
-      authError.classList.add("show");
-      showAuthGate();
-    }
-  } catch (err) {
-    authError.textContent = "Gagal terhubung ke server.";
-    authError.classList.add("show");
-    showAuthGate();
-  } finally {
-    authSubmitBtn.disabled = false;
-    authSubmitBtn.textContent = "Masuk Halaman Create";
-  }
-}
-
-authForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const inputKey = adminKeyGateInput.value.trim();
-  verifyAndProceed(inputKey);
-});
-
-// Initial load check
-if (currentAdminKey) {
-  verifyAndProceed(currentAdminKey);
-} else {
-  // Try verifying with empty key in case ADMIN_KEY env var is not set on server
-  verifyAndProceed("");
-}
+resetLanes();
 
 function showError(msg) {
   formError.textContent = msg;
@@ -169,7 +177,7 @@ form.addEventListener("submit", async (e) => {
     const hostValue = row.querySelector(".lane-host").value;
     const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
     const label = row.querySelector(".lane-label").value.trim() || preset.label;
-    servers.push({ label, url, color: preset.color || "#6366f1", icon: "download" });
+    servers.push({ label, url, color: preset.color });
   });
 
   if (servers.length === 0) {
@@ -185,21 +193,13 @@ form.addEventListener("submit", async (e) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-admin-key": currentAdminKey,
+        "x-admin-key": verifiedKey,
       },
       body: JSON.stringify({ title, description, servers }),
     });
     const data = await res.json();
 
     if (!res.ok) {
-      if (res.status === 401) {
-        localStorage.removeItem("dlhub_admin_key");
-        currentAdminKey = "";
-        showAuthGate();
-        authError.textContent = "Sesi Admin Key telah kadaluarsa atau salah.";
-        authError.classList.add("show");
-        return;
-      }
       showError(data.error || "Gagal membuat halaman.");
       return;
     }
@@ -212,7 +212,7 @@ form.addEventListener("submit", async (e) => {
     showError("Nggak bisa konek ke server. Coba lagi.");
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = "Buat Halaman";
+    submitBtn.textContent = "Buat halaman";
   }
 });
 
