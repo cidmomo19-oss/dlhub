@@ -1,4 +1,5 @@
 import { escapeHtml } from "./_lib/util.js";
+import { getStrings, getLocale } from "./_lib/i18n.js";
 
 // File statis (style.css, app.js, favicon.svg, dst) sudah otomatis dilayani
 // langsung dari /public oleh Cloudflare Pages, jadi request itu nggak pernah
@@ -8,15 +9,30 @@ export async function onRequestGet(context) {
   const { request, env, params } = context;
   const cache = caches.default;
 
+  // Negara visitor dari geo IP bawaan Cloudflare (request.cf.country).
+  // Cuma keisi di Cloudflare edge asli — pas local dev (`wrangler pages
+  // dev` tanpa --remote) biasanya kosong, jadi default-nya jatuh ke Inggris.
+  const country = request.cf?.country;
+  const locale = getLocale(country);
+  const t = getStrings(country);
+
+  // Konten beda per bahasa, jadi cache key HARUS ikut beda per bahasa juga
+  // — kalau nggak, visitor Indonesia & luar bisa "ketuker" kebagian cache
+  // punya bahasa lain di edge colo yang sama. URL asli yang dilihat
+  // visitor tetap bersih, ini cuma internal buat cache.
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set("__lang", locale);
+  const cacheKey = new Request(cacheUrl.toString(), request);
+
   // 1) Cek cache edge dulu. Kalau HIT, langsung balikin — nol query ke D1.
-  const cached = await cache.match(request);
+  const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
   const id = params.id;
   let response;
 
   if (!env.DB) {
-    response = htmlResponse(renderError("D1 belum ke-bind ke project ini."), 500, "public, max-age=10");
+    response = htmlResponse(renderError(t, "D1 belum ke-bind ke project ini."), 500, "public, max-age=10");
     return response;
   }
 
@@ -28,7 +44,7 @@ export async function onRequestGet(context) {
 
   if (!row) {
     // Cache pendek buat 404, biar ID ngasal/nyasar nggak terus-terusan hit D1
-    response = htmlResponse(renderNotFound(id), 404, "public, max-age=120");
+    response = htmlResponse(renderNotFound(t, id), 404, "public, max-age=120");
   } else {
     let servers = [];
     try {
@@ -38,7 +54,7 @@ export async function onRequestGet(context) {
     }
 
     response = htmlResponse(
-      renderPage(row, servers),
+      renderPage(t, row, servers),
       200,
       // Halaman dianggap tetap/immutable begitu dibuat -> cache lama & agresif.
       // Kalau nanti nambah fitur edit, purge cache URL-nya lewat dashboard
@@ -54,7 +70,7 @@ export async function onRequestGet(context) {
     );
   }
 
-  context.waitUntil(cache.put(request, response.clone()));
+  context.waitUntil(cache.put(cacheKey, response.clone()));
   return response;
 }
 
@@ -68,9 +84,9 @@ function htmlResponse(html, status, cacheControl) {
   });
 }
 
-function layout({ title, body }) {
+function layout({ title, body, htmlLang }) {
   return `<!DOCTYPE html>
-<html lang="id">
+<html lang="${htmlLang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -85,8 +101,8 @@ ${body}
 </html>`;
 }
 
-function renderPage(row, servers) {
-  const title = row.title?.trim() || "Paket unduhan";
+function renderPage(t, row, servers) {
+  const title = row.title?.trim() || t.defaultTitle;
   const description = row.description?.trim() || "";
   const thumbnail = row.thumbnail?.trim() || "";
 
@@ -115,42 +131,42 @@ function renderPage(row, servers) {
         <h1 class="title">${escapeHtml(title)}</h1>
         ${description ? `<p class="desc">${escapeHtml(description)}</p>` : ""}
 
-        <p class="servers-label">Server download (${servers.length})</p>
+        <p class="servers-label">${t.serversLabel(servers.length)}</p>
         <div class="server-list">
           ${items}
         </div>
 
-        <p class="hint">Pilih salah satu server di atas untuk mulai mengunduh. Kalau satu server error atau lambat, coba server lain di daftar.</p>
+        <p class="hint">${t.hint}</p>
       </div>
     </div>
   </main>`;
 
-  return layout({ title: `${title} — Pilih Server Download`, body });
+  return layout({ title: `${title} — ${t.pageTitleSuffix}`, body, htmlLang: t.htmlLang });
 }
 
-function renderNotFound(id) {
+function renderNotFound(t, id) {
   const body = `
   <main class="page">
     <div class="card">
       <div class="card-body empty-state">
-        <h1 class="title">Halaman nggak ketemu</h1>
-        <p class="desc">Kode <strong>${escapeHtml(id)}</strong> nggak ada di database, salah ketik, atau memang belum pernah dibuat.</p>
-        <a class="back-link" href="/">← Buat halaman baru</a>
+        <h1 class="title">${t.notFoundTitle}</h1>
+        <p class="desc">${t.notFoundDesc(escapeHtml(id))}</p>
+        <a class="back-link" href="/">${t.backLink}</a>
       </div>
     </div>
   </main>`;
-  return layout({ title: "Halaman tidak ditemukan — DLHUB", body });
+  return layout({ title: t.notFoundPageTitle, body, htmlLang: t.htmlLang });
 }
 
-function renderError(message) {
+function renderError(t, message) {
   const body = `
   <main class="page">
     <div class="card">
       <div class="card-body empty-state">
-        <h1 class="title">Terjadi kesalahan</h1>
+        <h1 class="title">${t.errorTitle}</h1>
         <p class="desc">${escapeHtml(message)}</p>
       </div>
     </div>
   </main>`;
-  return layout({ title: "Error — DLHUB", body });
+  return layout({ title: t.errorPageTitle, body, htmlLang: t.htmlLang });
 }
