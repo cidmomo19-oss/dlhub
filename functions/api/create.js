@@ -23,7 +23,7 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Body request bukan JSON yang valid." }, 400);
   }
 
-  const { title, description, servers } = body || {};
+  const { title, description, thumbnail, servers } = body || {};
 
   if (!Array.isArray(servers) || servers.length === 0) {
     return jsonResponse({ error: "Minimal harus ada 1 server." }, 400);
@@ -46,6 +46,12 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Nggak ada URL server yang valid (harus http/https)." }, 400);
   }
 
+  const thumbnailValue = String(thumbnail || "").trim();
+  if (thumbnailValue && !isSafeUrl(thumbnailValue)) {
+    return jsonResponse({ error: "URL thumbnail nggak valid (harus http/https)." }, 400);
+  }
+  const cleanThumbnail = thumbnailValue ? new URL(thumbnailValue).toString() : "";
+
   if (!env.DB) {
     return jsonResponse(
       { error: "D1 belum ke-bind. Set binding 'DB' di Cloudflare Pages -> Settings -> Functions." },
@@ -66,13 +72,14 @@ export async function onRequestPost(context) {
   if (!id) return jsonResponse({ error: "Gagal generate ID unik, coba lagi." }, 500);
 
   await env.DB.prepare(
-    `INSERT INTO links (id, title, description, servers, created_at, views)
-     VALUES (?, ?, ?, ?, ?, 0)`
+    `INSERT INTO links (id, title, description, thumbnail, servers, created_at, views)
+     VALUES (?, ?, ?, ?, ?, ?, 0)`
   )
     .bind(
       id,
       String(title || "").trim().slice(0, 100),
       String(description || "").trim().slice(0, 300),
+      cleanThumbnail,
       JSON.stringify(cleanServers),
       Date.now()
     )
