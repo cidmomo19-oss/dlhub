@@ -184,7 +184,7 @@ a { color: inherit; text-decoration: none; }
   gap: 10px;
 }
 
-/* Consistent Server Button Styling */
+/* Server Button Styling */
 .lane {
   display: flex;
   align-items: center;
@@ -215,8 +215,7 @@ a { color: inherit; text-decoration: none; }
   overflow-wrap: anywhere;
 }
 
-/* Update pada public/style.css */
-
+/* Icon Download Style */
 .lane-arrow {
   display: inline-flex;
   align-items: center;
@@ -231,10 +230,9 @@ a { color: inherit; text-decoration: none; }
   display: block;
 }
 
-/* Animasi hover diubah dari serong atas menjadi turun ke bawah (khas download) */
 .lane:hover .lane-arrow {
   color: #ffffff;
-  transform: translateY(2px);
+  transform: translateY(2px); /* Animasi icon download turun sedikit */
 }
 
 .hint {
@@ -416,7 +414,7 @@ a { color: inherit; text-decoration: none; }
 }
 .lane-remove:hover { background: var(--danger); color: #ffffff; }
 
-/* Action Buttons - Consistent Design */
+/* Action Buttons */
 
 .btn-primary, .submit-btn, .result-actions .primary {
   width: 100%;
