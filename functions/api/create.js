@@ -1,19 +1,19 @@
 import { generateId, jsonResponse, isSafeUrl, isHexColor } from "../_lib/util.js";
-import { ICON_KEYS } from "../_lib/icons.js";
 
 const MAX_SERVERS = 15;
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // Proteksi sederhana biar endpoint create nggak disalahgunain orang lain
-  // (hemat kuota D1 write & storage). Set env var ADMIN_KEY di Cloudflare
-  // Pages kalau mau aktifin ini. Kalau kosong, endpoint terbuka untuk semua.
-  if (env.ADMIN_KEY) {
-    const provided = request.headers.get("x-admin-key") || "";
-    if (provided !== env.ADMIN_KEY) {
-      return jsonResponse({ error: "Admin key salah atau kosong." }, 401);
-    }
+  // ADMIN_KEY WAJIB di-set di Cloudflare Pages -> Settings -> Environment
+  // variables. Tanpa ini, endpoint create ditutup total (nggak ada mode
+  // "terbuka buat semua orang" lagi).
+  if (!env.ADMIN_KEY) {
+    return jsonResponse({ error: "ADMIN_KEY belum di-set di server. Buka README." }, 500);
+  }
+  const provided = request.headers.get("x-admin-key") || "";
+  if (provided !== env.ADMIN_KEY) {
+    return jsonResponse({ error: "Admin key salah." }, 401);
   }
 
   let body;
@@ -39,7 +39,6 @@ export async function onRequestPost(context) {
       label: String(s.label || "Download").trim().slice(0, 40) || "Download",
       url: new URL(s.url).toString(),
       color: isHexColor(s.color) ? s.color : "#ff8a1e",
-      icon: ICON_KEYS.includes(s.icon) ? s.icon : "download",
     });
   }
 
