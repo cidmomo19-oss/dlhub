@@ -3,24 +3,25 @@ import { jsonResponse } from "../_lib/util.js";
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // If ADMIN_KEY is set in environment, verify against provided key
-  if (env.ADMIN_KEY) {
-    let body = {};
-    try {
-      body = await request.json();
-    } catch {
-      return jsonResponse({ error: "Invalid JSON body" }, 400);
-    }
-
-    const { key } = body || {};
-    if (key !== env.ADMIN_KEY) {
-      return jsonResponse({ error: "Admin key salah." }, 401);
-    }
+  if (!env.ADMIN_KEY) {
+    return jsonResponse({ ok: false, error: "ADMIN_KEY belum di-set di server. Buka README." }, 500);
   }
 
-  return jsonResponse({ success: true, message: "Admin key valid." }, 200);
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  const provided = (body && body.key) || "";
+  if (provided !== env.ADMIN_KEY) {
+    return jsonResponse({ ok: false, error: "Admin key salah." }, 401);
+  }
+
+  return jsonResponse({ ok: true });
 }
 
 export async function onRequestGet() {
-  return jsonResponse({ error: "Method not allowed, gunakan POST." }, 405);
+  return jsonResponse({ error: "Method not allowed, pakai POST." }, 405);
 }
