@@ -37,6 +37,14 @@
           </div>
 
           <div class="field">
+            <label for="thumbnail">Thumbnail <span class="optional">(opsional, rasio 16:9)</span></label>
+            <input type="url" id="thumbnail" placeholder="https://link-gambar-kamu.jpg">
+            <div class="thumb-preview" id="thumbPreview" style="display:none;">
+              <img id="thumbPreviewImg" alt="Preview thumbnail">
+            </div>
+          </div>
+
+          <div class="field">
             <label for="description">Catatan <span class="optional">(opsional)</span></label>
             <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
           </div>
