@@ -27,15 +27,25 @@ export function generateId(length = 7) {
   return result;
 }
 
-export function checkAdmin(request, env) {
+export function checkAdmin(request, env, body = null) {
   const serverKey = env.ADMIN_KEY;
   if (!serverKey || typeof serverKey !== "string" || serverKey.trim() === "") {
-    return false; // Wajib diset di Environment Variables Cloudflare
+    return false;
   }
 
+  // Cek dari Header
   const authHeader = request.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  const providedKey = match ? match[1].trim() : (request.headers.get("x-admin-key") || "").trim();
+  let clientKey = match ? match[1].trim() : (
+    request.headers.get("x-admin-key") ||
+    request.headers.get("admin-key") ||
+    ""
+  ).trim();
 
-  return providedKey === serverKey.trim();
+  // Cek dari Body jika dikirim
+  if (!clientKey && body && typeof body === "object") {
+    clientKey = (body.key || body.adminKey || body.admin_key || body.password || "").trim();
+  }
+
+  return clientKey === serverKey.trim();
 }
