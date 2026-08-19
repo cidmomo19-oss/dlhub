@@ -1,60 +1,90 @@
-import { jsonResponse, checkAdmin, generateId } from "../_lib/util.js";
+import { generateId, jsonResponse, isSafeUrl, isHexColor, checkAdmin } from "../_lib/util.js";
+
+const MAX_SERVERS = 15;
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  // ADMIN_KEY WAJIB di-set di Cloudflare Pages -> Settings -> Environment
+  // variables. Tanpa ini, endpoint create ditutup total (nggak ada mode
+  // "terbuka buat semua orang" lagi).
+  const authError = checkAdmin(request, env);
+  if (authError) return authError;
+
   let body;
   try {
     body = await request.json();
-  } catch (e) {
-    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  } catch {
+    return jsonResponse({ error: "Body request bukan JSON yang valid." }, 400);
   }
 
-  if (!checkAdmin(request, env, body)) {
-    return jsonResponse({ error: "Unauthorized / Admin key salah" }, 401);
+  const { title, description, thumbnail, servers } = body || {};
+
+  if (!Array.isArray(servers) || servers.length === 0) {
+    return jsonResponse({ error: "Minimal harus ada 1 server." }, 400);
+  }
+  if (servers.length > MAX_SERVERS) {
+    return jsonResponse({ error: `Maksimal ${MAX_SERVERS} server per halaman.` }, 400);
   }
 
-  try {
-    const { title = "", thumbnail = "", description = "", servers = [] } = body;
+  const cleanServers = [];
+  for (const s of servers) {
+    if (!s || !isSafeUrl(s.url)) continue;
+    cleanServers.push({
+      label: String(s.label || "Download").trim().slice(0, 40) || "Download",
+      url: new URL(s.url).toString(),
+      color: isHexColor(s.color) ? s.color : "#ff8a1e",
+    });
+  }
 
-    if (!Array.isArray(servers) || servers.length === 0) {
-      return jsonResponse({ error: "Minimal harus ada 1 server download." }, 400);
+  if (cleanServers.length === 0) {
+    return jsonResponse({ error: "Nggak ada URL server yang valid (harus http/https)." }, 400);
+  }
+
+  const thumbnailValue = String(thumbnail || "").trim();
+  if (thumbnailValue && !isSafeUrl(thumbnailValue)) {
+    return jsonResponse({ error: "URL thumbnail nggak valid (harus http/https)." }, 400);
+  }
+  const cleanThumbnail = thumbnailValue ? new URL(thumbnailValue).toString() : "";
+
+  if (!env.DB) {
+    return jsonResponse(
+      { error: "D1 belum ke-bind. Set binding 'DB' di Cloudflare Pages -> Settings -> Functions." },
+      500
+    );
+  }
+
+  // Generate ID unik, coba ulang kalau kebetulan bentrok
+  let id = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateId(7);
+    const existing = await env.DB.prepare("SELECT id FROM links WHERE id = ?").bind(candidate).first();
+    if (!existing) {
+      id = candidate;
+      break;
     }
+  }
+  if (!id) return jsonResponse({ error: "Gagal generate ID unik, coba lagi." }, 500);
 
-    if (servers.length > 15) {
-      return jsonResponse({ error: "Maksimal 15 server download." }, 400);
-    }
-
-    for (const s of servers) {
-      if (!s.url || !/^https?:\/\//i.test(s.url)) {
-        return jsonResponse({ error: "Semua server harus memiliki URL http/https yang valid." }, 400);
-      }
-    }
-
-    const id = generateId(7);
-    // Simpan dalam milidetik
-    const now = Date.now();
-    const serversJson = JSON.stringify(servers);
-
-    await env.DB.prepare(
-      `INSERT INTO links (id, title, thumbnail, description, servers, created_at, last_checked_at, views)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
-    ).bind(
+  await env.DB.prepare(
+    `INSERT INTO links (id, title, description, thumbnail, servers, created_at, last_checked_at, views)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+  )
+    .bind(
       id,
-      title.trim(),
-      thumbnail.trim(),
-      description.trim(),
-      serversJson,
-      now,
-      now
-    ).run();
+      String(title || "").trim().slice(0, 100),
+      String(description || "").trim().slice(0, 300),
+      cleanThumbnail,
+      JSON.stringify(cleanServers),
+      Date.now(),
+      Date.now()
+    )
+    .run();
 
-    const host = request.headers.get("host") || "";
-    const protocol = request.url.startsWith("https") ? "https" : "http";
-    const fullUrl = `${protocol}://${host}/${id}`;
+  const origin = new URL(request.url).origin;
+  return jsonResponse({ id, url: `${origin}/${id}` }, 201);
+}
 
-    return jsonResponse({ ok: true, id, url: fullUrl });
-  } catch (err) {
-    return jsonResponse({ error: err.message }, 500);
-  }
+export async function onRequestGet() {
+  return jsonResponse({ error: "Method not allowed, pakai POST." }, 405);
 }
