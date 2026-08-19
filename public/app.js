@@ -301,6 +301,7 @@ function renderSchedule(links) {
         <div class="schedule-actions">
           <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
           <button type="button" class="schedule-check-btn" data-id="${l.id}">Tandai sudah dicek</button>
+          <button type="button" class="schedule-delete-btn" data-id="${l.id}">Hapus</button>
         </div>
       </div>`;
     })
@@ -328,29 +329,65 @@ async function loadSchedule() {
 }
 
 scheduleList.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".schedule-check-btn");
-  if (!btn) return;
-  const id = btn.dataset.id;
+  const checkBtn = e.target.closest(".schedule-check-btn");
+  if (checkBtn) {
+    const id = checkBtn.dataset.id;
 
-  btn.disabled = true;
-  btn.textContent = "Menyimpan...";
-  try {
-    const res = await fetch(`/api/links/${id}/check`, {
-      method: "POST",
-      headers: { "x-admin-key": verifiedKey },
-    });
-    if (res.ok) {
-      showToast("Ditandai udah dicek ✓");
-      loadSchedule();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      showToast(data.error || "Gagal nandain link.");
-      btn.disabled = false;
-      btn.textContent = "Tandai sudah dicek";
+    checkBtn.disabled = true;
+    checkBtn.textContent = "Menyimpan...";
+    try {
+      const res = await fetch(`/api/links/${id}/check`, {
+        method: "POST",
+        headers: { "x-admin-key": verifiedKey },
+      });
+      if (res.ok) {
+        showToast("Ditandai udah dicek ✓");
+        loadSchedule();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || "Gagal nandain link.");
+        checkBtn.disabled = false;
+        checkBtn.textContent = "Tandai sudah dicek";
+      }
+    } catch {
+      showToast("Nggak bisa konek ke server.");
+      checkBtn.disabled = false;
+      checkBtn.textContent = "Tandai sudah dicek";
     }
-  } catch {
-    showToast("Nggak bisa konek ke server.");
-    btn.disabled = false;
-    btn.textContent = "Tandai sudah dicek";
+    return;
+  }
+
+  const deleteBtn = e.target.closest(".schedule-delete-btn");
+  if (deleteBtn) {
+    const id = deleteBtn.dataset.id;
+    const row = deleteBtn.closest(".schedule-row");
+    const name = row?.querySelector(".schedule-name")?.textContent || id;
+
+    const sure = confirm(
+      `Yakin mau hapus "${name}"?\n\nHalaman /${id} bakal langsung ilang dari database. Kalau halamannya masih ke-cache di edge Cloudflare, bisa aja masih kebuka sampai cache-nya abis sendiri.\n\nAksi ini nggak bisa dibatalin.`
+    );
+    if (!sure) return;
+
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = "Menghapus...";
+    try {
+      const res = await fetch(`/api/links/${id}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": verifiedKey },
+      });
+      if (res.ok) {
+        showToast("Link dihapus ✓");
+        loadSchedule();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || "Gagal hapus link.");
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = "Hapus";
+      }
+    } catch {
+      showToast("Nggak bisa konek ke server.");
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = "Hapus";
+    }
   }
 });
