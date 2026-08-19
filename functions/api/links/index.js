@@ -1,4 +1,4 @@
-import { jsonResponse, checkAdmin } from "../_lib/util.js";
+import { jsonResponse, checkAdmin } from "../../_lib/util.js";
 
 const LIST_LIMIT = 200;
 
