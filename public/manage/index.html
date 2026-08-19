@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DLHUB — Buat halaman pilihan server download</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="page">
+  <div id="gateView" class="card">
+    <div class="card-body">
+      <h1 class="title">Masukin admin key</h1>
+      <p class="subtitle">Halaman ini terkunci. Masukin admin key buat lanjut bikin halaman download.</p>
+
+      <form id="gateForm" novalidate>
+        <div class="field">
+          <label for="gateKey">Admin key</label>
+          <input type="password" id="gateKey" placeholder="Admin key" autocomplete="off" autofocus>
+        </div>
+        <div class="form-error" id="gateError"></div>
+        <button type="submit" class="submit-btn" id="gateSubmitBtn">Masuk</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="createView" style="display:none;">
+    <div class="card">
+      <div class="card-body">
+        <h1 class="title">Buat halaman download</h1>
+        <p class="subtitle">Satu link, banyak server pilihan. Bagikan satu URL — orang lain tinggal pilih mirror yang paling enak buat mereka.</p>
+
+        <form id="createForm" novalidate>
+          <div class="field">
+            <label for="title">Nama paket <span class="optional">(opsional)</span></label>
+            <input type="text" id="title" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
+          </div>
+
+          <div class="field">
+            <label for="thumbnail">Thumbnail <span class="optional">(opsional, rasio 16:9)</span></label>
+            <input type="url" id="thumbnail" placeholder="https://link-gambar-kamu.jpg">
+            <div class="thumb-preview" id="thumbPreview" style="display:none;">
+              <img id="thumbPreviewImg" alt="Preview thumbnail">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="description">Catatan <span class="optional">(opsional)</span></label>
+            <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
+          </div>
+
+          <div class="field" style="margin-bottom:8px;">
+            <label>Server download</label>
+          </div>
+
+          <div class="lane-rows" id="laneRows"></div>
+          <button type="button" class="add-lane-btn" id="addLane">+ Tambah server</button>
+
+          <div class="form-error" id="formError"></div>
+
+          <button type="submit" class="submit-btn" id="submitBtn">Buat halaman</button>
+        </form>
+
+        <div class="result-box" id="resultBox">
+          <p class="result-label">✓ Halaman berhasil dibuat</p>
+          <div class="result-link-row">
+            <input type="text" id="resultLink" readonly>
+          </div>
+          <div class="result-actions">
+            <button type="button" class="primary" id="copyBtn">Salin link</button>
+            <a href="#" target="_blank" rel="noopener" id="openBtn">Buka halaman</a>
+            <button type="button" id="resetBtn">Buat lagi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="schedule-head">
+          <h2 class="title">Jadwal cek link</h2>
+          <span class="schedule-count" id="scheduleCount"></span>
+        </div>
+        <p class="subtitle">Tiap link dianggap perlu dicek ulang tiap 9 hari sekali — misalnya buat mastiin link Gofile belum kadaluarsa.</p>
+        <div class="schedule-list" id="scheduleList">
+          <p class="schedule-empty">Memuat...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
