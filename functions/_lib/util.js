@@ -1,51 +1,53 @@
-export function jsonResponse(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      ...headers
-    }
-  });
+// Alfabet tanpa karakter yang gampang ketuker (0/O, 1/l/I)
+const ID_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+export function generateId(length = 7) {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let id = "";
+  for (let i = 0; i < length; i++) id += ID_ALPHABET[bytes[i] % ID_ALPHABET.length];
+  return id;
 }
 
 export function escapeHtml(str) {
-  if (typeof str !== "string") return "";
-  return str
+  return String(str ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/'/g, "&#39;");
 }
 
-export function generateId(length = 7) {
-  const chars = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+export function jsonResponse(data, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=UTF-8", ...extraHeaders },
+  });
 }
 
-export function checkAdmin(request, env, body = null) {
-  const serverKey = env.ADMIN_KEY;
-  if (!serverKey || typeof serverKey !== "string" || serverKey.trim() === "") {
+export function isSafeUrl(value) {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
     return false;
   }
+}
 
-  // Cek dari Header
-  const authHeader = request.headers.get("Authorization") || "";
-  const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  let clientKey = match ? match[1].trim() : (
-    request.headers.get("x-admin-key") ||
-    request.headers.get("admin-key") ||
-    ""
-  ).trim();
+export function isHexColor(value) {
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+}
 
-  // Cek dari Body jika dikirim
-  if (!clientKey && body && typeof body === "object") {
-    clientKey = (body.key || body.adminKey || body.admin_key || body.password || "").trim();
+// Dipakai di semua endpoint /api/* yang butuh admin key lewat header
+// x-admin-key. Balikin null kalau lolos, atau Response siap-pakai kalau
+// ditolak (tinggal `return`).
+export function checkAdmin(request, env) {
+  if (!env.ADMIN_KEY) {
+    return jsonResponse({ error: "ADMIN_KEY belum di-set di server. Buka README." }, 500);
   }
-
-  return clientKey === serverKey.trim();
+  const provided = request.headers.get("x-admin-key") || "";
+  if (provided !== env.ADMIN_KEY) {
+    return jsonResponse({ error: "Admin key salah." }, 401);
+  }
+  return null;
 }
