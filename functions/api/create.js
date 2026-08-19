@@ -10,7 +10,6 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Invalid JSON body" }, 400);
   }
 
-  // Validasi admin key (header atau body)
   if (!checkAdmin(request, env, body)) {
     return jsonResponse({ error: "Unauthorized / Admin key salah" }, 401);
   }
@@ -33,7 +32,8 @@ export async function onRequestPost(context) {
     }
 
     const id = generateId(7);
-    const now = Math.floor(Date.now() / 1000);
+    // Simpan dalam milidetik
+    const now = Date.now();
     const serversJson = JSON.stringify(servers);
 
     await env.DB.prepare(
