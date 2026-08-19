@@ -37,3 +37,17 @@ export function isSafeUrl(value) {
 export function isHexColor(value) {
   return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
 }
+
+// Dipakai di semua endpoint /api/* yang butuh admin key lewat header
+// x-admin-key. Balikin null kalau lolos, atau Response siap-pakai kalau
+// ditolak (tinggal `return`).
+export function checkAdmin(request, env) {
+  if (!env.ADMIN_KEY) {
+    return jsonResponse({ error: "ADMIN_KEY belum di-set di server. Buka README." }, 500);
+  }
+  const provided = request.headers.get("x-admin-key") || "";
+  if (provided !== env.ADMIN_KEY) {
+    return jsonResponse({ error: "Admin key salah." }, 401);
+  }
+  return null;
+}
