@@ -13,7 +13,8 @@ export async function onRequestPost(context) {
   }
 
   try {
-    const now = Math.floor(Date.now() / 1000);
+    // Gunakan milidetik (Date.now()) sesuai format frontend app.js
+    const now = Date.now();
     const result = await env.DB.prepare(
       "UPDATE links SET last_checked_at = ? WHERE id = ?"
     ).bind(now, id).run();
