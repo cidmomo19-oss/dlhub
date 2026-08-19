@@ -3,12 +3,19 @@ import { jsonResponse, checkAdmin, generateId } from "../_lib/util.js";
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!checkAdmin(request, env)) {
-    return jsonResponse({ error: "Unauthorized" }, 401);
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  // Validasi admin key (header atau body)
+  if (!checkAdmin(request, env, body)) {
+    return jsonResponse({ error: "Unauthorized / Admin key salah" }, 401);
   }
 
   try {
-    const body = await request.json();
     const { title = "", thumbnail = "", description = "", servers = [] } = body;
 
     if (!Array.isArray(servers) || servers.length === 0) {
