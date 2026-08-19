@@ -5,12 +5,12 @@ export async function onRequest(context) {
   const { request, env, params } = context;
   const id = params.id;
 
-  // 1. JANGAN TANGKAP RUTE STATIS / MANAGE (Biar halaman manage bisa kebuka)
+  // Lewatkan jika halaman manage atau file aset statis
   if (!id || id === "manage" || id === "favicon.ico" || id === "robots.txt" || id === "style.css" || id === "app.js") {
     return context.next();
   }
 
-  // 2. Cek Cache API Cloudflare terlebih dahulu
+  // Cek cache edge Cloudflare
   const country = request.cf?.country || "US";
   const cacheUrl = new URL(request.url);
   cacheUrl.searchParams.set("lang", country === "ID" ? "id" : "en");
@@ -22,14 +22,12 @@ export async function onRequest(context) {
     return cachedResponse;
   }
 
-  // 3. Query database D1
   if (!env.DB) {
     return new Response("Database D1 belum di-binding.", { status: 500 });
   }
 
   const link = await env.DB.prepare("SELECT * FROM links WHERE id = ?").bind(id).first();
 
-  // Jika ID tidak ditemukan di database, serahkan ke context.next() (siapa tahu file statis lain) atau 404
   if (!link) {
     const staticFallback = await context.next();
     if (staticFallback.status !== 404) {
@@ -42,14 +40,13 @@ export async function onRequest(context) {
     });
   }
 
-  // Best-effort tambah counter views
+  // Counter view best-effort
   if (context.waitUntil) {
     context.waitUntil(
       env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run().catch(() => {})
     );
   }
 
-  // 4. Parse servers & Render HTML
   let servers = [];
   try {
     servers = typeof link.servers === "string" ? JSON.parse(link.servers) : (link.servers || []);
@@ -68,7 +65,6 @@ export async function onRequest(context) {
     }
   });
 
-  // Simpan ke Cache Edge Cloudflare
   if (context.waitUntil) {
     context.waitUntil(cache.put(cacheKey, response.clone()));
   }
@@ -108,21 +104,25 @@ function renderDownloadPage(link, servers, t) {
     </div>
   ` : "";
 
-  const serverButtons = servers.map(s => `
-    <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow" class="server-btn">
-      <span class="server-btn-label">${escapeHtml(s.name || "Download")}</span>
-      <span class="server-btn-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-      </span>
-    </a>
-  `).join("");
+  // Ambil nama server dari s.label atau s.name
+  const serverButtons = servers.map(s => {
+    const serverName = s.label || s.name || s.host || "Download";
+    return `
+      <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow" class="server-btn">
+        <span class="server-btn-label">${escapeHtml(serverName)}</span>
+        <span class="server-btn-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </span>
+      </a>
+    `;
+  }).join("");
 
   return `<!DOCTYPE html>
 <html lang="${t.lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>${title} — DLHUB</title>
+  <title>${title}</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -135,7 +135,7 @@ function renderDownloadPage(link, servers, t) {
         ${desc}
         <div class="servers-label">${t.serversLabel}</div>
         <div class="server-list">
-          ${serverButtons.length > 0 ? serverButtons : `<p class="desc">No download links available.</p>`}
+          ${serverButtons}
         </div>
         <p class="hint">${t.hint}</p>
       </div>
