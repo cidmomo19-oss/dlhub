@@ -4,22 +4,22 @@ export function getMessages(country) {
   if (isId) {
     return {
       lang: "id",
-      title: "Pilih Server Download",
-      serversLabel: "PILIH SERVER DOWNLOAD",
-      hint: "Tips: Jika salah satu server lambat, limit, atau error, silakan pilih server alternatif di atas.",
-      notFoundTitle: "Halaman Tidak Ditemukan",
-      notFoundDesc: "Link download ini mungkin sudah kadaluarsa atau URL yang kamu masukkan salah.",
+      defaultTitle: "Pilihan Server Download",
+      serversLabel: "SERVER TERSEDIA",
+      hint: "Tips: Kalau link mati, lambat, atau kena limit kuota, coba pilih server download yang lain di atas.",
+      notFoundTitle: "Halaman tidak ditemukan",
+      notFoundDesc: "Link download ini mungkin sudah kadaluarsa atau URL salah.",
       backHome: "Kembali"
     };
   }
 
   return {
     lang: "en",
-    title: "Choose Download Server",
+    defaultTitle: "Download Mirrors",
     serversLabel: "AVAILABLE SERVERS",
-    hint: "Tip: If a server is slow, rate-limited, or broken, please try one of the other mirrors above.",
-    notFoundTitle: "Page Not Found",
-    notFoundDesc: "This download link may have expired or the URL is incorrect.",
-    backHome: "Go Back"
+    hint: "Tip: If one server is slow, down, or rate-limited, try another download mirror above.",
+    notFoundTitle: "Page not found",
+    notFoundDesc: "This download link may have expired or the URL is invalid.",
+    backHome: "Go back"
   };
 }
