@@ -510,3 +510,18 @@ a { color: inherit; }
 }
 .schedule-check-btn:hover { border-color: var(--accent); color: var(--accent); }
 .schedule-check-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.schedule-delete-btn {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-dim);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.schedule-delete-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+.schedule-delete-btn:disabled { opacity: .55; cursor: not-allowed; }
