@@ -15,6 +15,8 @@ const HOSTS = [
 ];
 
 const STORAGE_KEY = "dlhub_admin_key";
+const CHECK_INTERVAL_DAYS = 9;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ---------- Gate (admin key) ----------
 
@@ -41,6 +43,7 @@ function unlock(key) {
   verifiedKey = key;
   gateView.style.display = "none";
   createView.style.display = "";
+  loadSchedule();
 }
 
 function showGateError(msg) {
@@ -227,6 +230,7 @@ form.addEventListener("submit", async (e) => {
     openBtn.href = data.url;
     form.style.display = "none";
     resultBox.classList.add("show");
+    loadSchedule();
   } catch (err) {
     showError("Nggak bisa konek ke server. Coba lagi.");
   } finally {
@@ -254,4 +258,99 @@ resetBtn.addEventListener("click", () => {
   thumbnailInput.value = "";
   thumbPreview.style.display = "none";
   resetLanes();
+});
+
+// ---------- Jadwal cek link (tiap 9 hari sekali) ----------
+
+const scheduleList = document.getElementById("scheduleList");
+const scheduleCount = document.getElementById("scheduleCount");
+
+function scheduleStatus(lastCheckedAt) {
+  const daysSince = Math.floor((Date.now() - lastCheckedAt) / DAY_MS);
+  const daysLeft = CHECK_INTERVAL_DAYS - daysSince;
+
+  if (daysLeft <= 0) {
+    return { cls: "overdue", text: daysLeft === 0 ? "Jatuh tempo hari ini" : `Telat ${Math.abs(daysLeft)} hari` };
+  }
+  if (daysLeft <= 2) {
+    return { cls: "due-soon", text: `${daysLeft} hari lagi` };
+  }
+  return { cls: "ok", text: `${daysLeft} hari lagi` };
+}
+
+function renderSchedule(links) {
+  if (links.length === 0) {
+    scheduleList.innerHTML = '<p class="schedule-empty">Belum ada halaman yang dibuat.</p>';
+    scheduleCount.textContent = "";
+    return;
+  }
+
+  const overdueCount = links.filter((l) => scheduleStatus(l.last_checked_at).cls === "overdue").length;
+  scheduleCount.textContent = overdueCount > 0 ? `${overdueCount} perlu dicek` : `${links.length} link`;
+
+  scheduleList.innerHTML = links
+    .map((l) => {
+      const status = scheduleStatus(l.last_checked_at);
+      const name = (l.title || "").trim() || l.id;
+      return `
+      <div class="schedule-row" data-id="${l.id}">
+        <div class="schedule-info">
+          <div class="schedule-name">${escapeHtmlClient(name)}</div>
+          <div class="schedule-status ${status.cls}">${status.text}</div>
+        </div>
+        <div class="schedule-actions">
+          <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
+          <button type="button" class="schedule-check-btn" data-id="${l.id}">Tandai sudah dicek</button>
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
+function escapeHtmlClient(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function loadSchedule() {
+  try {
+    const res = await fetch("/api/links", { headers: { "x-admin-key": verifiedKey } });
+    const data = await res.json();
+    if (!res.ok) {
+      scheduleList.innerHTML = `<p class="schedule-empty">${data.error || "Gagal memuat jadwal."}</p>`;
+      return;
+    }
+    renderSchedule(data.links || []);
+  } catch {
+    scheduleList.innerHTML = '<p class="schedule-empty">Nggak bisa konek ke server.</p>';
+  }
+}
+
+scheduleList.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".schedule-check-btn");
+  if (!btn) return;
+  const id = btn.dataset.id;
+
+  btn.disabled = true;
+  btn.textContent = "Menyimpan...";
+  try {
+    const res = await fetch(`/api/links/${id}/check`, {
+      method: "POST",
+      headers: { "x-admin-key": verifiedKey },
+    });
+    if (res.ok) {
+      showToast("Ditandai udah dicek ✓");
+      loadSchedule();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast(data.error || "Gagal nandain link.");
+      btn.disabled = false;
+      btn.textContent = "Tandai sudah dicek";
+    }
+  } catch {
+    showToast("Nggak bisa konek ke server.");
+    btn.disabled = false;
+    btn.textContent = "Tandai sudah dicek";
+  }
 });
