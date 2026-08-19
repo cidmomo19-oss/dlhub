@@ -1,4 +1,4 @@
-import { generateId, jsonResponse, isSafeUrl, isHexColor } from "../_lib/util.js";
+import { generateId, jsonResponse, isSafeUrl, isHexColor, checkAdmin } from "../_lib/util.js";
 
 const MAX_SERVERS = 15;
 
@@ -8,13 +8,8 @@ export async function onRequestPost(context) {
   // ADMIN_KEY WAJIB di-set di Cloudflare Pages -> Settings -> Environment
   // variables. Tanpa ini, endpoint create ditutup total (nggak ada mode
   // "terbuka buat semua orang" lagi).
-  if (!env.ADMIN_KEY) {
-    return jsonResponse({ error: "ADMIN_KEY belum di-set di server. Buka README." }, 500);
-  }
-  const provided = request.headers.get("x-admin-key") || "";
-  if (provided !== env.ADMIN_KEY) {
-    return jsonResponse({ error: "Admin key salah." }, 401);
-  }
+  const authError = checkAdmin(request, env);
+  if (authError) return authError;
 
   let body;
   try {
@@ -72,8 +67,8 @@ export async function onRequestPost(context) {
   if (!id) return jsonResponse({ error: "Gagal generate ID unik, coba lagi." }, 500);
 
   await env.DB.prepare(
-    `INSERT INTO links (id, title, description, thumbnail, servers, created_at, views)
-     VALUES (?, ?, ?, ?, ?, ?, 0)`
+    `INSERT INTO links (id, title, description, thumbnail, servers, created_at, last_checked_at, views)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
   )
     .bind(
       id,
@@ -81,6 +76,7 @@ export async function onRequestPost(context) {
       String(description || "").trim().slice(0, 300),
       cleanThumbnail,
       JSON.stringify(cleanServers),
+      Date.now(),
       Date.now()
     )
     .run();
