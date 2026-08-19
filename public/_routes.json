@@ -1,5 +1,12 @@
 {
   "version": 1,
   "include": ["/*"],
-  "exclude": ["/manage", "/manage/*"]
+  "exclude": [
+    "/manage",
+    "/manage/*",
+    "/style.css",
+    "/app.js",
+    "/favicon.svg",
+    "/robots.txt"
+  ]
 }
