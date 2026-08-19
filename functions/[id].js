@@ -1,172 +1,146 @@
 import { escapeHtml } from "./_lib/util.js";
-import { getStrings, getLocale } from "./_lib/i18n.js";
+import { getMessages } from "./_lib/i18n.js";
 
-// File statis (style.css, app.js, favicon.svg, dst) sudah otomatis dilayani
-// langsung dari /public oleh Cloudflare Pages, jadi request itu nggak pernah
-// nyampe ke Function ini — nggak makan kuota.
-
-export async function onRequestGet(context) {
+export async function onRequest(context) {
   const { request, env, params } = context;
-  const cache = caches.default;
-
-  // Negara visitor dari geo IP bawaan Cloudflare (request.cf.country).
-  // Cuma keisi di Cloudflare edge asli — pas local dev (`wrangler pages
-  // dev` tanpa --remote) biasanya kosong, jadi default-nya jatuh ke Inggris.
-  const country = request.cf?.country;
-  const locale = getLocale(country);
-  const t = getStrings(country);
-
-  // Konten beda per bahasa, jadi cache key HARUS ikut beda per bahasa juga
-  // — kalau nggak, visitor Indonesia & luar bisa "ketuker" kebagian cache
-  // punya bahasa lain di edge colo yang sama. URL asli yang dilihat
-  // visitor tetap bersih, ini cuma internal buat cache.
-  const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set("__lang", locale);
-  const cacheKey = new Request(cacheUrl.toString(), request);
-
-  // 1) Cek cache edge dulu. Kalau HIT, langsung balikin — nol query ke D1.
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached;
-
   const id = params.id;
-  let response;
 
+  // 1. JANGAN TANGKAP RUTE STATIS / MANAGE (Biar halaman manage bisa kebuka)
+  if (!id || id === "manage" || id === "favicon.ico" || id === "robots.txt" || id === "style.css" || id === "app.js") {
+    return context.next();
+  }
+
+  // 2. Cek Cache API Cloudflare terlebih dahulu
+  const country = request.cf?.country || "US";
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set("lang", country === "ID" ? "id" : "en");
+  
+  const cacheKey = new Request(cacheUrl.toString(), request);
+  const cache = caches.default;
+  let cachedResponse = await cache.match(cacheKey);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  // 3. Query database D1
   if (!env.DB) {
-    response = htmlResponse(renderError(t, "D1 belum ke-bind ke project ini."), 500, "public, max-age=10");
-    return response;
+    return new Response("Database D1 belum di-binding.", { status: 500 });
   }
 
-  const row = await env.DB.prepare(
-    "SELECT id, title, description, thumbnail, servers, views FROM links WHERE id = ?"
-  )
-    .bind(id)
-    .first();
+  const link = await env.DB.prepare("SELECT * FROM links WHERE id = ?").bind(id).first();
 
-  if (!row) {
-    // Cache pendek buat 404, biar ID ngasal/nyasar nggak terus-terusan hit D1
-    response = htmlResponse(renderNotFound(t, id), 404, "public, max-age=120");
-  } else {
-    let servers = [];
-    try {
-      servers = JSON.parse(row.servers);
-    } catch {
-      servers = [];
+  // Jika ID tidak ditemukan di database, serahkan ke context.next() (siapa tahu file statis lain) atau 404
+  if (!link) {
+    const staticFallback = await context.next();
+    if (staticFallback.status !== 404) {
+      return staticFallback;
     }
+    const t = getMessages(country);
+    return new Response(renderNotFound(t), {
+      status: 404,
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
+  }
 
-    response = htmlResponse(
-      renderPage(t, row, servers),
-      200,
-      // Halaman dianggap tetap/immutable begitu dibuat -> cache lama & agresif.
-      // Kalau nanti nambah fitur edit, purge cache URL-nya lewat dashboard
-      // Cloudflare (Caching -> Configuration -> Purge by URL).
-      "public, max-age=31536000, s-maxage=31536000, immutable"
-    );
-
-    // Best-effort view counter. Ini CUMA jalan pas cache MISS, jadi setelah
-    // halaman "dingin" di edge cache, angka views nggak lagi nambah persis
-    // per-visit. Trade-off sadar demi hemat kuota D1 write.
+  // Best-effort tambah counter views
+  if (context.waitUntil) {
     context.waitUntil(
-      env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run()
+      env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run().catch(() => {})
     );
   }
 
-  context.waitUntil(cache.put(cacheKey, response.clone()));
+  // 4. Parse servers & Render HTML
+  let servers = [];
+  try {
+    servers = typeof link.servers === "string" ? JSON.parse(link.servers) : (link.servers || []);
+  } catch (e) {
+    servers = [];
+  }
+
+  const t = getMessages(country);
+  const html = renderDownloadPage(link, servers, t);
+
+  const response = new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  });
+
+  // Simpan ke Cache Edge Cloudflare
+  if (context.waitUntil) {
+    context.waitUntil(cache.put(cacheKey, response.clone()));
+  }
+
   return response;
 }
 
-function htmlResponse(html, status, cacheControl) {
-  return new Response(html, {
-    status,
-    headers: {
-      "content-type": "text/html; charset=UTF-8",
-      "cache-control": cacheControl,
-    },
-  });
-}
-
-function layout({ title, body, htmlLang }) {
+function renderNotFound(t) {
   return `<!DOCTYPE html>
-<html lang="${htmlLang}">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>${escapeHtml(title)}</title>
-<meta name="robots" content="noindex, nofollow">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${t.notFoundTitle}</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-${body}
-</body>
-</html>`;
-}
-
-function renderPage(t, row, servers) {
-  const title = row.title?.trim() || t.defaultTitle;
-  const description = row.description?.trim() || "";
-  const thumbnail = row.thumbnail?.trim() || "";
-
-  const downloadIcon =
-    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>';
-
-  const items = servers
-    .map(
-      (s) => `
-      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow">
-        <span class="server-btn-label">${escapeHtml(s.label)}</span>
-        <span class="server-btn-icon" aria-hidden="true">${downloadIcon}</span>
-      </a>`
-    )
-    .join("");
-
-  const thumbnailHtml = thumbnail
-    ? `<div class="thumbnail"><img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"></div>`
-    : "";
-
-  const body = `
-  <main class="page">
-    <div class="card">
-      ${thumbnailHtml}
-      <div class="card-body">
-        <h1 class="title">${escapeHtml(title)}</h1>
-        ${description ? `<p class="desc">${escapeHtml(description)}</p>` : ""}
-
-        <p class="servers-label">${t.serversLabel(servers.length)}</p>
-        <div class="server-list">
-          ${items}
-        </div>
-
-        <p class="hint">${t.hint}</p>
-      </div>
-    </div>
-  </main>`;
-
-  return layout({ title: `${title} — ${t.pageTitleSuffix}`, body, htmlLang: t.htmlLang });
-}
-
-function renderNotFound(t, id) {
-  const body = `
   <main class="page">
     <div class="card">
       <div class="card-body empty-state">
         <h1 class="title">${t.notFoundTitle}</h1>
-        <p class="desc">${t.notFoundDesc(escapeHtml(id))}</p>
-        <a class="back-link" href="/">${t.backLink}</a>
+        <p class="desc">${t.notFoundDesc}</p>
+        <a href="/" class="back-link">${t.backHome}</a>
       </div>
     </div>
-  </main>`;
-  return layout({ title: t.notFoundPageTitle, body, htmlLang: t.htmlLang });
+  </main>
+</body>
+</html>`;
 }
 
-function renderError(t, message) {
-  const body = `
+function renderDownloadPage(link, servers, t) {
+  const title = link.title ? escapeHtml(link.title) : t.title;
+  const desc = link.description ? `<p class="desc">${escapeHtml(link.description)}</p>` : "";
+  const thumbnail = link.thumbnail ? `
+    <div class="thumbnail">
+      <img src="${escapeHtml(link.thumbnail)}" alt="${title}" loading="lazy">
+    </div>
+  ` : "";
+
+  const serverButtons = servers.map(s => `
+    <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow" class="server-btn">
+      <span class="server-btn-label">${escapeHtml(s.name || "Download")}</span>
+      <span class="server-btn-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </span>
+    </a>
+  `).join("");
+
+  return `<!DOCTYPE html>
+<html lang="${t.lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>${title} — DLHUB</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
   <main class="page">
     <div class="card">
-      <div class="card-body empty-state">
-        <h1 class="title">${t.errorTitle}</h1>
-        <p class="desc">${escapeHtml(message)}</p>
+      ${thumbnail}
+      <div class="card-body">
+        <h1 class="title">${title}</h1>
+        ${desc}
+        <div class="servers-label">${t.serversLabel}</div>
+        <div class="server-list">
+          ${serverButtons.length > 0 ? serverButtons : `<p class="desc">No download links available.</p>`}
+        </div>
+        <p class="hint">${t.hint}</p>
       </div>
     </div>
-  </main>`;
-  return layout({ title: t.errorPageTitle, body, htmlLang: t.htmlLang });
+  </main>
+</body>
+</html>`;
 }
