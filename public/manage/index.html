@@ -52,7 +52,18 @@
           </div>
 
           <div class="field" style="margin-bottom:8px;">
-            <label>Server download</label>
+            <div class="server-field-header">
+              <label style="margin-bottom:0;">Server download</label>
+              <button type="button" class="toggle-mass-btn" id="toggleMassBtn">⚡ Mode Massal (Link | Nama)</button>
+            </div>
+          </div>
+
+          <div class="mass-input-box" id="massInputBox" style="display:none;">
+            <p class="mass-hint">Format per baris: <code>Link | Nama</code> atau <code>Link</code> saja.<br>Contoh: <code>https://gofile.io/xxx | Gofile</code></p>
+            <textarea id="massInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server&#10;https://pixeldrain.com/u/yyy | Pixeldrain Server"></textarea>
+            <div class="mass-actions">
+              <button type="button" class="mass-apply-btn" id="massApplyBtn">Terapkan Input Massal</button>
+            </div>
           </div>
 
           <div class="lane-rows" id="laneRows"></div>
