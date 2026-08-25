@@ -15,7 +15,7 @@ const HOSTS = [
 ];
 
 const STORAGE_KEY = "dlhub_admin_key";
-const CHECK_INTERVAL_DAYS = 9;
+const CHECK_INTERVAL_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ---------- Gate (admin key) ----------
@@ -565,7 +565,7 @@ if (editForm) {
   });
 }
 
-// ---------- Jadwal cek link (tiap 9 hari sekali) ----------
+// ---------- Jadwal cek link (tiap 30 hari sekali) ----------
 
 const scheduleList = document.getElementById("scheduleList");
 const scheduleCount = document.getElementById("scheduleCount");
