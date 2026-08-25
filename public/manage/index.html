@@ -103,6 +103,64 @@
   </div>
 </main>
 
+<!-- Modal Edit Link -->
+<div class="modal-overlay" id="editModal" style="display:none;">
+  <div class="modal-card card">
+    <div class="card-body">
+      <div class="modal-head">
+        <h2 class="title" style="margin-bottom:0;">Edit halaman download</h2>
+        <button type="button" class="modal-close-btn" id="editModalCloseBtn" aria-label="Tutup">×</button>
+      </div>
+      <p class="subtitle" style="margin-top:6px; margin-bottom:16px;">Ubah nama, thumbnail, catatan, atau server download untuk link <code id="editLinkId"></code>.</p>
+
+      <form id="editForm" novalidate>
+        <div class="field">
+          <label for="editTitle">Nama paket <span class="optional">(opsional)</span></label>
+          <input type="text" id="editTitle" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
+        </div>
+
+        <div class="field">
+          <label for="editThumbnail">Thumbnail <span class="optional">(opsional, rasio 16:9)</span></label>
+          <input type="url" id="editThumbnail" placeholder="https://link-gambar-kamu.jpg">
+          <div class="thumb-preview" id="editThumbPreview" style="display:none;">
+            <img id="editThumbPreviewImg" alt="Preview thumbnail">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="editDescription">Catatan <span class="optional">(opsional)</span></label>
+          <textarea id="editDescription" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link"></textarea>
+        </div>
+
+        <div class="field" style="margin-bottom:8px;">
+          <div class="server-field-header">
+            <label style="margin-bottom:0;">Server download</label>
+            <button type="button" class="toggle-mass-btn" id="editToggleMassBtn">⚡ Mode Massal (Link | Nama)</button>
+          </div>
+        </div>
+
+        <div class="mass-input-box" id="editMassInputBox" style="display:none;">
+          <p class="mass-hint">Format per baris: <code>Link | Nama</code> atau <code>Link</code> saja.</p>
+          <textarea id="editMassInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server"></textarea>
+          <div class="mass-actions">
+            <button type="button" class="mass-apply-btn" id="editMassApplyBtn">Terapkan Input Massal</button>
+          </div>
+        </div>
+
+        <div class="lane-rows" id="editLaneRows"></div>
+        <button type="button" class="add-lane-btn" id="editAddLane">+ Tambah server</button>
+
+        <div class="form-error" id="editFormError"></div>
+
+        <div class="modal-actions">
+          <button type="button" class="modal-cancel-btn" id="editCancelBtn">Batal</button>
+          <button type="submit" class="submit-btn" id="editSubmitBtn">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script src="/app.js"></script>
 </body>

@@ -156,7 +156,7 @@ function hostOptionsHtml() {
   return HOSTS.map((h) => `<option value="${h.value}">${h.label}</option>`).join("");
 }
 
-function addLaneRow(presetValue, customLabel, customUrl) {
+function createLaneRowElement(containerElement, presetValue, customLabel, customUrl) {
   const row = document.createElement("div");
   row.className = "lane-row";
   row.innerHTML = `
@@ -192,11 +192,15 @@ function addLaneRow(presetValue, customLabel, customUrl) {
   select.addEventListener("change", applyPreset);
 
   row.querySelector(".lane-remove").addEventListener("click", () => {
-    if (laneRows.children.length <= 1) return;
+    if (containerElement.children.length <= 1) return;
     row.remove();
   });
 
-  laneRows.appendChild(row);
+  containerElement.appendChild(row);
+}
+
+function addLaneRow(presetValue, customLabel, customUrl) {
+  createLaneRowElement(laneRows, presetValue, customLabel, customUrl);
 }
 
 if (massApplyBtn && massInputText) {
@@ -337,6 +341,230 @@ resetBtn.addEventListener("click", () => {
   resetLanes();
 });
 
+// ---------- Edit Form Modal Logic ----------
+
+const editModal = document.getElementById("editModal");
+const editLinkIdEl = document.getElementById("editLinkId");
+const editTitleInput = document.getElementById("editTitle");
+const editThumbnailInput = document.getElementById("editThumbnail");
+const editThumbPreview = document.getElementById("editThumbPreview");
+const editThumbPreviewImg = document.getElementById("editThumbPreviewImg");
+const editDescriptionInput = document.getElementById("editDescription");
+const editLaneRows = document.getElementById("editLaneRows");
+const editAddLaneBtn = document.getElementById("editAddLane");
+const editForm = document.getElementById("editForm");
+const editFormError = document.getElementById("editFormError");
+const editSubmitBtn = document.getElementById("editSubmitBtn");
+const editCancelBtn = document.getElementById("editCancelBtn");
+const editModalCloseBtn = document.getElementById("editModalCloseBtn");
+
+const editToggleMassBtn = document.getElementById("editToggleMassBtn");
+const editMassInputBox = document.getElementById("editMassInputBox");
+const editMassInputText = document.getElementById("editMassInputText");
+const editMassApplyBtn = document.getElementById("editMassApplyBtn");
+
+let activeEditingId = null;
+
+if (editThumbnailInput) {
+  editThumbnailInput.addEventListener("input", () => {
+    const url = editThumbnailInput.value.trim();
+    if (!url) {
+      editThumbPreview.style.display = "none";
+      return;
+    }
+    editThumbPreviewImg.src = url;
+  });
+  editThumbPreviewImg.addEventListener("load", () => {
+    editThumbPreview.style.display = "";
+  });
+  editThumbPreviewImg.addEventListener("error", () => {
+    editThumbPreview.style.display = "none";
+  });
+}
+
+if (editToggleMassBtn && editMassInputBox) {
+  editToggleMassBtn.addEventListener("click", () => {
+    const isHidden = editMassInputBox.style.display === "none";
+    editMassInputBox.style.display = isHidden ? "block" : "none";
+    editToggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama)";
+    if (isHidden && editMassInputText) {
+      editMassInputText.focus();
+    }
+  });
+}
+
+function addEditLaneRow(presetValue, customLabel, customUrl) {
+  createLaneRowElement(editLaneRows, presetValue, customLabel, customUrl);
+}
+
+if (editMassApplyBtn && editMassInputText) {
+  editMassApplyBtn.addEventListener("click", () => {
+    clearEditError();
+    const text = editMassInputText.value.trim();
+    if (!text) {
+      showEditError("Masukkan setidaknya 1 link dalam format: Link | Nama");
+      return;
+    }
+
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const parsedEntries = [];
+
+    for (const line of lines) {
+      const parts = line.split("|");
+      const url = parts[0].trim();
+      if (!url) continue;
+      const customLabel = parts.slice(1).join("|").trim();
+      const hostValue = detectHost(url, customLabel);
+      const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
+      const finalLabel = customLabel || preset.label;
+
+      parsedEntries.push({ hostValue, label: finalLabel, url });
+    }
+
+    if (parsedEntries.length === 0) {
+      showEditError("Nggak ada link yang valid dalam teks massal.");
+      return;
+    }
+
+    editLaneRows.innerHTML = "";
+    parsedEntries.forEach((entry) => {
+      addEditLaneRow(entry.hostValue, entry.label, entry.url);
+    });
+
+    showToast(`${parsedEntries.length} server berhasil ditambahkan ✓`);
+  });
+}
+
+if (editAddLaneBtn) {
+  editAddLaneBtn.addEventListener("click", () => addEditLaneRow());
+}
+
+function showEditError(msg) {
+  if (editFormError) {
+    editFormError.textContent = msg;
+    editFormError.classList.add("show");
+  }
+}
+
+function clearEditError() {
+  if (editFormError) {
+    editFormError.textContent = "";
+    editFormError.classList.remove("show");
+  }
+}
+
+function closeEditModal() {
+  if (editModal) editModal.style.display = "none";
+  activeEditingId = null;
+  clearEditError();
+}
+
+if (editCancelBtn) editCancelBtn.addEventListener("click", closeEditModal);
+if (editModalCloseBtn) editModalCloseBtn.addEventListener("click", closeEditModal);
+
+async function openEditModal(id) {
+  clearEditError();
+  activeEditingId = id;
+  if (editLinkIdEl) editLinkIdEl.textContent = id;
+
+  if (editMassInputBox) editMassInputBox.style.display = "none";
+  if (editToggleMassBtn) editToggleMassBtn.textContent = "⚡ Mode Massal (Link | Nama)";
+  if (editMassInputText) editMassInputText.value = "";
+
+  if (editModal) editModal.style.display = "flex";
+
+  try {
+    const res = await fetch(`/api/links/${id}`, {
+      headers: { "x-admin-key": verifiedKey },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showEditError(data.error || "Gagal memuat detail link.");
+      return;
+    }
+
+    editTitleInput.value = data.title || "";
+    editDescriptionInput.value = data.description || "";
+    editThumbnailInput.value = data.thumbnail || "";
+
+    if (data.thumbnail) {
+      editThumbPreviewImg.src = data.thumbnail;
+    } else {
+      editThumbPreview.style.display = "none";
+    }
+
+    editLaneRows.innerHTML = "";
+    const servers = Array.isArray(data.servers) ? data.servers : [];
+    if (servers.length === 0) {
+      addEditLaneRow("gofile");
+    } else {
+      servers.forEach((s) => {
+        const hostVal = detectHost(s.url, s.label);
+        addEditLaneRow(hostVal, s.label, s.url);
+      });
+    }
+  } catch {
+    showEditError("Nggak bisa konek ke server.");
+  }
+}
+
+if (editForm) {
+  editForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearEditError();
+
+    if (!activeEditingId) return;
+
+    const title = editTitleInput.value.trim();
+    const description = editDescriptionInput.value.trim();
+    const thumbnail = editThumbnailInput.value.trim();
+
+    const servers = [];
+    editLaneRows.querySelectorAll(".lane-row").forEach((row) => {
+      const url = row.querySelector(".lane-url").value.trim();
+      if (!url) return;
+      const hostValue = row.querySelector(".lane-host").value;
+      const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
+      const label = row.querySelector(".lane-label").value.trim() || preset.label;
+      servers.push({ label, url, color: preset.color });
+    });
+
+    if (servers.length === 0) {
+      showEditError("Isi minimal 1 link server yang valid.");
+      return;
+    }
+
+    editSubmitBtn.disabled = true;
+    editSubmitBtn.textContent = "Menyimpan...";
+
+    try {
+      const res = await fetch(`/api/links/${activeEditingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": verifiedKey,
+        },
+        body: JSON.stringify({ title, description, thumbnail, servers }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showEditError(data.error || "Gagal menyimpan perubahan.");
+        return;
+      }
+
+      showToast("Halaman berhasil diperbarui ✓");
+      closeEditModal();
+      loadSchedule();
+    } catch {
+      showEditError("Nggak bisa konek ke server. Coba lagi.");
+    } finally {
+      editSubmitBtn.disabled = false;
+      editSubmitBtn.textContent = "Simpan Perubahan";
+    }
+  });
+}
+
 // ---------- Jadwal cek link (tiap 9 hari sekali) ----------
 
 const scheduleList = document.getElementById("scheduleList");
@@ -377,6 +605,7 @@ function renderSchedule(links) {
         </div>
         <div class="schedule-actions">
           <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
+          <button type="button" class="schedule-edit-btn" data-id="${l.id}">Edit</button>
           <button type="button" class="schedule-check-btn" data-id="${l.id}">Tandai sudah dicek</button>
           <button type="button" class="schedule-delete-btn" data-id="${l.id}">Hapus</button>
         </div>
@@ -406,6 +635,13 @@ async function loadSchedule() {
 }
 
 scheduleList.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest(".schedule-edit-btn");
+  if (editBtn) {
+    const id = editBtn.dataset.id;
+    openEditModal(id);
+    return;
+  }
+
   const checkBtn = e.target.closest(".schedule-check-btn");
   if (checkBtn) {
     const id = checkBtn.dataset.id;
