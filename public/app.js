@@ -122,11 +122,41 @@ thumbPreviewImg.addEventListener("error", () => {
   thumbPreview.style.display = "none";
 });
 
+const toggleMassBtn = document.getElementById("toggleMassBtn");
+const massInputBox = document.getElementById("massInputBox");
+const massInputText = document.getElementById("massInputText");
+const massApplyBtn = document.getElementById("massApplyBtn");
+
+function detectHost(url, label) {
+  const combined = (url + " " + label).toLowerCase();
+  if (combined.includes("gofile")) return "gofile";
+  if (combined.includes("pixeldrain")) return "pixeldrain";
+  if (combined.includes("mega.nz") || combined.includes("mega.io") || combined.includes("mega")) return "mega";
+  if (combined.includes("terabox")) return "terabox";
+  if (combined.includes("mediafire")) return "mediafire";
+  if (combined.includes("drive.google") || combined.includes("gdrive") || combined.includes("google drive")) return "gdrive";
+  if (combined.includes("krakenfiles") || combined.includes("kraken")) return "krakenfiles";
+  if (combined.includes("buzzheavier")) return "buzzheavier";
+  if (combined.includes("1fichier") || combined.includes("onefichier")) return "onefichier";
+  return "custom";
+}
+
+if (toggleMassBtn && massInputBox) {
+  toggleMassBtn.addEventListener("click", () => {
+    const isHidden = massInputBox.style.display === "none";
+    massInputBox.style.display = isHidden ? "block" : "none";
+    toggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama)";
+    if (isHidden && massInputText) {
+      massInputText.focus();
+    }
+  });
+}
+
 function hostOptionsHtml() {
   return HOSTS.map((h) => `<option value="${h.value}">${h.label}</option>`).join("");
 }
 
-function addLaneRow(presetValue) {
+function addLaneRow(presetValue, customLabel, customUrl) {
   const row = document.createElement("div");
   row.className = "lane-row";
   row.innerHTML = `
@@ -142,6 +172,7 @@ function addLaneRow(presetValue) {
 
   const select = row.querySelector(".lane-host");
   const labelInput = row.querySelector(".lane-label");
+  const urlInput = row.querySelector(".lane-url");
 
   function applyPreset() {
     const preset = HOSTS.find((h) => h.value === select.value) || HOSTS[HOSTS.length - 1];
@@ -149,7 +180,15 @@ function addLaneRow(presetValue) {
   }
 
   select.value = presetValue || HOSTS[0].value;
-  applyPreset();
+  if (customLabel !== undefined) {
+    labelInput.value = customLabel;
+  } else {
+    applyPreset();
+  }
+  if (customUrl !== undefined) {
+    urlInput.value = customUrl;
+  }
+
   select.addEventListener("change", applyPreset);
 
   row.querySelector(".lane-remove").addEventListener("click", () => {
@@ -158,6 +197,44 @@ function addLaneRow(presetValue) {
   });
 
   laneRows.appendChild(row);
+}
+
+if (massApplyBtn && massInputText) {
+  massApplyBtn.addEventListener("click", () => {
+    clearError();
+    const text = massInputText.value.trim();
+    if (!text) {
+      showError("Masukkan setidaknya 1 link dalam format: Link | Nama");
+      return;
+    }
+
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const parsedEntries = [];
+
+    for (const line of lines) {
+      const parts = line.split("|");
+      const url = parts[0].trim();
+      if (!url) continue;
+      const customLabel = parts.slice(1).join("|").trim();
+      const hostValue = detectHost(url, customLabel);
+      const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
+      const finalLabel = customLabel || preset.label;
+
+      parsedEntries.push({ hostValue, label: finalLabel, url });
+    }
+
+    if (parsedEntries.length === 0) {
+      showError("Nggak ada link yang valid dalam teks massal.");
+      return;
+    }
+
+    laneRows.innerHTML = "";
+    parsedEntries.forEach((entry) => {
+      addLaneRow(entry.hostValue, entry.label, entry.url);
+    });
+
+    showToast(`${parsedEntries.length} server berhasil ditambahkan ✓`);
+  });
 }
 
 addLaneBtn.addEventListener("click", () => addLaneRow());
