@@ -203,6 +203,7 @@ a { color: inherit; }
 .field input[type="text"],
 .field input[type="password"],
 .field input[type="url"],
+.field input[type="number"],
 .field textarea {
   width: 100%;
   background: var(--surface-2);
@@ -513,6 +514,17 @@ a { color: inherit; }
   white-space: nowrap;
 }
 
+.schedule-alert-banner {
+  background: rgba(245, 185, 66, 0.12);
+  border: 1px solid var(--warning);
+  color: #ffe082;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
 .schedule-list {
   display: flex;
   flex-direction: column;
@@ -536,6 +548,10 @@ a { color: inherit; }
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   flex-wrap: wrap;
+}
+
+.schedule-row.row-alert {
+  border-color: rgba(245, 185, 66, 0.4);
 }
 
 .schedule-info { min-width: 0; }

@@ -18,7 +18,7 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Body request bukan JSON yang valid." }, 400);
   }
 
-  const { title, description, thumbnail, servers } = body || {};
+  const { title, description, thumbnail, servers, expiry_days } = body || {};
 
   if (!Array.isArray(servers) || servers.length === 0) {
     return jsonResponse({ error: "Minimal harus ada 1 server." }, 400);
@@ -47,6 +47,9 @@ export async function onRequestPost(context) {
   }
   const cleanThumbnail = thumbnailValue ? new URL(thumbnailValue).toString() : "";
 
+  const expiryDaysParsed = parseInt(expiry_days, 10);
+  const expiryDays = !isNaN(expiryDaysParsed) && expiryDaysParsed > 0 ? expiryDaysParsed : 30;
+
   if (!env.DB) {
     return jsonResponse(
       { error: "D1 belum ke-bind. Set binding 'DB' di Cloudflare Pages -> Settings -> Functions." },
@@ -67,8 +70,8 @@ export async function onRequestPost(context) {
   if (!id) return jsonResponse({ error: "Gagal generate ID unik, coba lagi." }, 500);
 
   await env.DB.prepare(
-    `INSERT INTO links (id, title, description, thumbnail, servers, created_at, last_checked_at, views)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+    `INSERT INTO links (id, title, description, thumbnail, servers, created_at, last_checked_at, expiry_days, views)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`
   )
     .bind(
       id,
@@ -77,7 +80,8 @@ export async function onRequestPost(context) {
       cleanThumbnail,
       JSON.stringify(cleanServers),
       Date.now(),
-      Date.now()
+      Date.now(),
+      expiryDays
     )
     .run();
 

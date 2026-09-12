@@ -15,9 +15,9 @@ export async function onRequestGet(context) {
     );
   }
 
-  // Urut dari yang paling lama nggak dicek -> paling mendesak duluan.
+  // Urut dari yang paling lama nggak dicek / diklik -> paling mendesak duluan.
   const { results } = await env.DB.prepare(
-    `SELECT id, title, created_at, last_checked_at, views FROM links
+    `SELECT id, title, created_at, last_checked_at, expiry_days, views FROM links
      ORDER BY last_checked_at ASC LIMIT ?`
   )
     .bind(LIST_LIMIT)
