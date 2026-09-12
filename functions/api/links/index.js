@@ -17,13 +17,26 @@ export async function onRequestGet(context) {
 
   // Urut dari yang paling lama nggak dicek / diklik -> paling mendesak duluan.
   const { results } = await env.DB.prepare(
-    `SELECT id, title, created_at, last_checked_at, expiry_days, views FROM links
+    `SELECT id, title, created_at, last_checked_at, expiry_days, servers, views FROM links
      ORDER BY last_checked_at ASC LIMIT ?`
   )
     .bind(LIST_LIMIT)
     .all();
 
-  return jsonResponse({ links: results || [] });
+  const cleanResults = (results || []).map((row) => {
+    let servers = [];
+    try {
+      servers = typeof row.servers === "string" ? JSON.parse(row.servers) : (row.servers || []);
+    } catch {
+      servers = [];
+    }
+    return {
+      ...row,
+      servers,
+    };
+  });
+
+  return jsonResponse({ links: cleanResults });
 }
 
 export async function onRequestPost() {

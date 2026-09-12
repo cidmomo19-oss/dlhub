@@ -51,21 +51,16 @@
             <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
           </div>
 
-          <div class="field">
-            <label for="expiryDays">Waktu kadaluarsa (hari)</label>
-            <input type="number" id="expiryDays" min="1" max="365" value="30" placeholder="30">
-          </div>
-
           <div class="field" style="margin-bottom:8px;">
             <div class="server-field-header">
-              <label style="margin-bottom:0;">Server download</label>
-              <button type="button" class="toggle-mass-btn" id="toggleMassBtn">⚡ Mode Massal (Link | Nama)</button>
+              <label style="margin-bottom:0;">Server download &amp; masa kadaluarsa (hari)</label>
+              <button type="button" class="toggle-mass-btn" id="toggleMassBtn">⚡ Mode Massal (Link | Nama | Hari)</button>
             </div>
           </div>
 
           <div class="mass-input-box" id="massInputBox" style="display:none;">
-            <p class="mass-hint">Format per baris: <code>Link | Nama</code> atau <code>Link</code> saja.<br>Contoh: <code>https://gofile.io/xxx | Gofile</code></p>
-            <textarea id="massInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server&#10;https://pixeldrain.com/u/yyy | Pixeldrain Server"></textarea>
+            <p class="mass-hint">Format per baris: <code>Link | Nama | Hari</code> atau <code>Link | Nama</code> atau <code>Link</code> saja.<br>Contoh: <code>https://gofile.io/xxx | Gofile | 30</code></p>
+            <textarea id="massInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server | 30&#10;https://pixeldrain.com/u/yyy | Pixeldrain Server | 7"></textarea>
             <div class="mass-actions">
               <button type="button" class="mass-apply-btn" id="massApplyBtn">Terapkan Input Massal</button>
             </div>
@@ -99,7 +94,7 @@
           <h2 class="title">Jadwal cek link</h2>
           <span class="schedule-count" id="scheduleCount"></span>
         </div>
-        <p class="subtitle">Waktu kadaluarsa dihitung dari klik terakhir. Jika link tidak diklik dan hampir kadaluarsa (≤ 3 hari), notifikasi akan muncul di sini.</p>
+        <p class="subtitle">Durasi kadaluarsa dihitung per server dari klik terakhir. Jika ada server yang tidak diklik &amp; hampir kadaluarsa (≤ 3 hari), notifikasi akan muncul di sini.</p>
         <div class="schedule-list" id="scheduleList">
           <p class="schedule-empty">Memuat...</p>
         </div>
@@ -116,7 +111,7 @@
         <h2 class="title" style="margin-bottom:0;">Edit halaman download</h2>
         <button type="button" class="modal-close-btn" id="editModalCloseBtn" aria-label="Tutup">×</button>
       </div>
-      <p class="subtitle" style="margin-top:6px; margin-bottom:16px;">Ubah nama, thumbnail, catatan, durasi kadaluarsa, atau server download untuk link <code id="editLinkId"></code>.</p>
+      <p class="subtitle" style="margin-top:6px; margin-bottom:16px;">Ubah nama, thumbnail, catatan, atau server download untuk link <code id="editLinkId"></code>.</p>
 
       <form id="editForm" novalidate>
         <div class="field">
@@ -137,21 +132,16 @@
           <textarea id="editDescription" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link"></textarea>
         </div>
 
-        <div class="field">
-          <label for="editExpiryDays">Waktu kadaluarsa (hari)</label>
-          <input type="number" id="editExpiryDays" min="1" max="365" value="30" placeholder="30">
-        </div>
-
         <div class="field" style="margin-bottom:8px;">
           <div class="server-field-header">
-            <label style="margin-bottom:0;">Server download</label>
-            <button type="button" class="toggle-mass-btn" id="editToggleMassBtn">⚡ Mode Massal (Link | Nama)</button>
+            <label style="margin-bottom:0;">Server download &amp; masa kadaluarsa (hari)</label>
+            <button type="button" class="toggle-mass-btn" id="editToggleMassBtn">⚡ Mode Massal (Link | Nama | Hari)</button>
           </div>
         </div>
 
         <div class="mass-input-box" id="editMassInputBox" style="display:none;">
-          <p class="mass-hint">Format per baris: <code>Link | Nama</code> atau <code>Link</code> saja.</p>
-          <textarea id="editMassInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server"></textarea>
+          <p class="mass-hint">Format per baris: <code>Link | Nama | Hari</code> atau <code>Link | Nama</code> atau <code>Link</code> saja.</p>
+          <textarea id="editMassInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server | 30"></textarea>
           <div class="mass-actions">
             <button type="button" class="mass-apply-btn" id="editMassApplyBtn">Terapkan Input Massal</button>
           </div>

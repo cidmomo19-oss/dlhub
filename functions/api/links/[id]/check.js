@@ -13,16 +13,26 @@ export async function onRequestPost(context) {
     );
   }
 
-  const now = Date.now();
-  const result = await env.DB.prepare("UPDATE links SET last_checked_at = ? WHERE id = ?")
-    .bind(now, params.id)
-    .run();
-
-  if (!result.meta || result.meta.changes === 0) {
+  const row = await env.DB.prepare("SELECT servers FROM links WHERE id = ?").bind(params.id).first();
+  if (!row) {
     return jsonResponse({ error: "Link nggak ketemu." }, 404);
   }
 
-  return jsonResponse({ id: params.id, last_checked_at: now });
+  let servers = [];
+  try {
+    servers = typeof row.servers === "string" ? JSON.parse(row.servers) : [];
+  } catch {
+    servers = [];
+  }
+
+  const now = Date.now();
+  servers = servers.map((s) => ({ ...s, last_clicked_at: now }));
+
+  await env.DB.prepare("UPDATE links SET last_checked_at = ?, servers = ? WHERE id = ?")
+    .bind(now, JSON.stringify(servers), params.id)
+    .run();
+
+  return jsonResponse({ id: params.id, last_checked_at: now, servers });
 }
 
 export async function onRequestGet() {

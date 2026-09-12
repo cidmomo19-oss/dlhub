@@ -105,7 +105,6 @@ const toast = document.getElementById("toast");
 const thumbnailInput = document.getElementById("thumbnail");
 const thumbPreview = document.getElementById("thumbPreview");
 const thumbPreviewImg = document.getElementById("thumbPreviewImg");
-const expiryDaysInput = document.getElementById("expiryDays");
 
 thumbnailInput.addEventListener("input", () => {
   const url = thumbnailInput.value.trim();
@@ -145,7 +144,7 @@ if (toggleMassBtn && massInputBox) {
   toggleMassBtn.addEventListener("click", () => {
     const isHidden = massInputBox.style.display === "none";
     massInputBox.style.display = isHidden ? "block" : "none";
-    toggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama)";
+    toggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama | Hari)";
     if (isHidden && massInputText) {
       massInputText.focus();
     }
@@ -156,7 +155,7 @@ function hostOptionsHtml() {
   return HOSTS.map((h) => `<option value="${h.value}">${h.label}</option>`).join("");
 }
 
-function createLaneRowElement(containerElement, presetValue, customLabel, customUrl) {
+function createLaneRowElement(containerElement, presetValue, customLabel, customUrl, customExpiryDays) {
   const row = document.createElement("div");
   row.className = "lane-row";
   row.innerHTML = `
@@ -166,12 +165,16 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
     </div>
     <div class="lane-row-fields">
       <input type="text" class="lane-label" placeholder="Nama server" maxlength="40">
+      <div class="lane-expiry-wrap">
+        <input type="number" class="lane-expiry" min="1" max="365" value="30" placeholder="Kadaluarsa (hari)">
+      </div>
       <input type="url" class="lane-url" placeholder="https://link-download-kamu">
     </div>
   `;
 
   const select = row.querySelector(".lane-host");
   const labelInput = row.querySelector(".lane-label");
+  const expiryInput = row.querySelector(".lane-expiry");
   const urlInput = row.querySelector(".lane-url");
 
   function applyPreset() {
@@ -188,6 +191,11 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
   if (customUrl !== undefined) {
     urlInput.value = customUrl;
   }
+  if (customExpiryDays !== undefined) {
+    expiryInput.value = customExpiryDays;
+  } else {
+    expiryInput.value = 30;
+  }
 
   select.addEventListener("change", applyPreset);
 
@@ -199,8 +207,8 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
   containerElement.appendChild(row);
 }
 
-function addLaneRow(presetValue, customLabel, customUrl) {
-  createLaneRowElement(laneRows, presetValue, customLabel, customUrl);
+function addLaneRow(presetValue, customLabel, customUrl, customExpiryDays) {
+  createLaneRowElement(laneRows, presetValue, customLabel, customUrl, customExpiryDays);
 }
 
 if (massApplyBtn && massInputText) {
@@ -208,7 +216,7 @@ if (massApplyBtn && massInputText) {
     clearError();
     const text = massInputText.value.trim();
     if (!text) {
-      showError("Masukkan setidaknya 1 link dalam format: Link | Nama");
+      showError("Masukkan setidaknya 1 link dalam format: Link | Nama | Hari");
       return;
     }
 
@@ -219,12 +227,15 @@ if (massApplyBtn && massInputText) {
       const parts = line.split("|");
       const url = parts[0].trim();
       if (!url) continue;
-      const customLabel = parts.slice(1).join("|").trim();
+      const customLabel = parts[1] ? parts[1].trim() : "";
+      const customExpiry = parts[2] ? parseInt(parts[2].trim(), 10) : 30;
+
       const hostValue = detectHost(url, customLabel);
       const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
       const finalLabel = customLabel || preset.label;
+      const finalExpiry = !isNaN(customExpiry) && customExpiry > 0 ? customExpiry : 30;
 
-      parsedEntries.push({ hostValue, label: finalLabel, url });
+      parsedEntries.push({ hostValue, label: finalLabel, url, expiry_days: finalExpiry });
     }
 
     if (parsedEntries.length === 0) {
@@ -234,7 +245,7 @@ if (massApplyBtn && massInputText) {
 
     laneRows.innerHTML = "";
     parsedEntries.forEach((entry) => {
-      addLaneRow(entry.hostValue, entry.label, entry.url);
+      addLaneRow(entry.hostValue, entry.label, entry.url, entry.expiry_days);
     });
 
     showToast(`${parsedEntries.length} server berhasil ditambahkan ✓`);
@@ -272,7 +283,6 @@ form.addEventListener("submit", async (e) => {
   const title = document.getElementById("title").value.trim();
   const description = document.getElementById("description").value.trim();
   const thumbnail = thumbnailInput.value.trim();
-  const expiry_days = parseInt(expiryDaysInput?.value, 10) || 30;
 
   const servers = [];
   laneRows.querySelectorAll(".lane-row").forEach((row) => {
@@ -281,7 +291,9 @@ form.addEventListener("submit", async (e) => {
     const hostValue = row.querySelector(".lane-host").value;
     const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
     const label = row.querySelector(".lane-label").value.trim() || preset.label;
-    servers.push({ label, url, color: preset.color });
+    const expiry_days = parseInt(row.querySelector(".lane-expiry").value, 10) || 30;
+
+    servers.push({ label, url, color: preset.color, expiry_days });
   });
 
   if (servers.length === 0) {
@@ -299,7 +311,7 @@ form.addEventListener("submit", async (e) => {
         "Content-Type": "application/json",
         "x-admin-key": verifiedKey,
       },
-      body: JSON.stringify({ title, description, thumbnail, expiry_days, servers }),
+      body: JSON.stringify({ title, description, thumbnail, servers }),
     });
     const data = await res.json();
 
@@ -337,7 +349,6 @@ resetBtn.addEventListener("click", () => {
   form.style.display = "";
   document.getElementById("title").value = "";
   document.getElementById("description").value = "";
-  if (expiryDaysInput) expiryDaysInput.value = "30";
   thumbnailInput.value = "";
   thumbPreview.style.display = "none";
   resetLanes();
@@ -352,7 +363,6 @@ const editThumbnailInput = document.getElementById("editThumbnail");
 const editThumbPreview = document.getElementById("editThumbPreview");
 const editThumbPreviewImg = document.getElementById("editThumbPreviewImg");
 const editDescriptionInput = document.getElementById("editDescription");
-const editExpiryDaysInput = document.getElementById("editExpiryDays");
 const editLaneRows = document.getElementById("editLaneRows");
 const editAddLaneBtn = document.getElementById("editAddLane");
 const editForm = document.getElementById("editForm");
@@ -389,15 +399,15 @@ if (editToggleMassBtn && editMassInputBox) {
   editToggleMassBtn.addEventListener("click", () => {
     const isHidden = editMassInputBox.style.display === "none";
     editMassInputBox.style.display = isHidden ? "block" : "none";
-    editToggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama)";
+    editToggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama | Hari)";
     if (isHidden && editMassInputText) {
       editMassInputText.focus();
     }
   });
 }
 
-function addEditLaneRow(presetValue, customLabel, customUrl) {
-  createLaneRowElement(editLaneRows, presetValue, customLabel, customUrl);
+function addEditLaneRow(presetValue, customLabel, customUrl, customExpiryDays) {
+  createLaneRowElement(editLaneRows, presetValue, customLabel, customUrl, customExpiryDays);
 }
 
 if (editMassApplyBtn && editMassInputText) {
@@ -405,7 +415,7 @@ if (editMassApplyBtn && editMassInputText) {
     clearEditError();
     const text = editMassInputText.value.trim();
     if (!text) {
-      showEditError("Masukkan setidaknya 1 link dalam format: Link | Nama");
+      showEditError("Masukkan setidaknya 1 link dalam format: Link | Nama | Hari");
       return;
     }
 
@@ -416,12 +426,15 @@ if (editMassApplyBtn && editMassInputText) {
       const parts = line.split("|");
       const url = parts[0].trim();
       if (!url) continue;
-      const customLabel = parts.slice(1).join("|").trim();
+      const customLabel = parts[1] ? parts[1].trim() : "";
+      const customExpiry = parts[2] ? parseInt(parts[2].trim(), 10) : 30;
+
       const hostValue = detectHost(url, customLabel);
       const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
       const finalLabel = customLabel || preset.label;
+      const finalExpiry = !isNaN(customExpiry) && customExpiry > 0 ? customExpiry : 30;
 
-      parsedEntries.push({ hostValue, label: finalLabel, url });
+      parsedEntries.push({ hostValue, label: finalLabel, url, expiry_days: finalExpiry });
     }
 
     if (parsedEntries.length === 0) {
@@ -431,7 +444,7 @@ if (editMassApplyBtn && editMassInputText) {
 
     editLaneRows.innerHTML = "";
     parsedEntries.forEach((entry) => {
-      addEditLaneRow(entry.hostValue, entry.label, entry.url);
+      addEditLaneRow(entry.hostValue, entry.label, entry.url, entry.expiry_days);
     });
 
     showToast(`${parsedEntries.length} server berhasil ditambahkan ✓`);
@@ -471,7 +484,7 @@ async function openEditModal(id) {
   if (editLinkIdEl) editLinkIdEl.textContent = id;
 
   if (editMassInputBox) editMassInputBox.style.display = "none";
-  if (editToggleMassBtn) editToggleMassBtn.textContent = "⚡ Mode Massal (Link | Nama)";
+  if (editToggleMassBtn) editToggleMassBtn.textContent = "⚡ Mode Massal (Link | Nama | Hari)";
   if (editMassInputText) editMassInputText.value = "";
 
   if (editModal) editModal.style.display = "flex";
@@ -489,7 +502,6 @@ async function openEditModal(id) {
     editTitleInput.value = data.title || "";
     editDescriptionInput.value = data.description || "";
     editThumbnailInput.value = data.thumbnail || "";
-    if (editExpiryDaysInput) editExpiryDaysInput.value = data.expiry_days || 30;
 
     if (data.thumbnail) {
       editThumbPreviewImg.src = data.thumbnail;
@@ -504,7 +516,7 @@ async function openEditModal(id) {
     } else {
       servers.forEach((s) => {
         const hostVal = detectHost(s.url, s.label);
-        addEditLaneRow(hostVal, s.label, s.url);
+        addEditLaneRow(hostVal, s.label, s.url, s.expiry_days);
       });
     }
   } catch {
@@ -522,7 +534,6 @@ if (editForm) {
     const title = editTitleInput.value.trim();
     const description = editDescriptionInput.value.trim();
     const thumbnail = editThumbnailInput.value.trim();
-    const expiry_days = parseInt(editExpiryDaysInput?.value, 10) || 30;
 
     const servers = [];
     editLaneRows.querySelectorAll(".lane-row").forEach((row) => {
@@ -531,7 +542,9 @@ if (editForm) {
       const hostValue = row.querySelector(".lane-host").value;
       const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
       const label = row.querySelector(".lane-label").value.trim() || preset.label;
-      servers.push({ label, url, color: preset.color });
+      const expiry_days = parseInt(row.querySelector(".lane-expiry").value, 10) || 30;
+
+      servers.push({ label, url, color: preset.color, expiry_days });
     });
 
     if (servers.length === 0) {
@@ -549,7 +562,7 @@ if (editForm) {
           "Content-Type": "application/json",
           "x-admin-key": verifiedKey,
         },
-        body: JSON.stringify({ title, description, thumbnail, expiry_days, servers }),
+        body: JSON.stringify({ title, description, thumbnail, servers }),
       });
       const data = await res.json();
 
@@ -575,30 +588,37 @@ if (editForm) {
 const scheduleList = document.getElementById("scheduleList");
 const scheduleCount = document.getElementById("scheduleCount");
 
-function scheduleStatus(lastCheckedAt, expiryDays = 30) {
-  const totalDays = expiryDays > 0 ? expiryDays : 30;
-  const expiryTime = lastCheckedAt + totalDays * DAY_MS;
+function calculateServerStatus(server, linkLastChecked, linkCreatedAt) {
+  const lastClicked = server.last_clicked_at || linkLastChecked || linkCreatedAt || Date.now();
+  const expiryDays = server.expiry_days > 0 ? server.expiry_days : 30;
+  const expiryTime = lastClicked + expiryDays * DAY_MS;
   const msLeft = expiryTime - Date.now();
   const daysLeft = Math.ceil(msLeft / DAY_MS);
 
   if (daysLeft <= 0) {
     return {
       cls: "overdue",
-      text: daysLeft === 0 ? `Jatuh tempo hari ini (${totalDays} hr)` : `Kadaluarsa ${Math.abs(daysLeft)} hari lalu (${totalDays} hr)`,
-      isAlert: true
+      daysLeft,
+      expiryDays,
+      text: daysLeft === 0 ? "Jatuh tempo hari ini" : `Kadaluarsa ${Math.abs(daysLeft)} hr lalu`,
+      isAlert: true,
     };
   }
   if (daysLeft <= 3) {
     return {
       cls: "due-soon",
-      text: `Hampir kadaluarsa (${daysLeft} hari lagi / max ${totalDays} hr)`,
-      isAlert: true
+      daysLeft,
+      expiryDays,
+      text: `Hampir kadaluarsa (${daysLeft} hr lagi)`,
+      isAlert: true,
     };
   }
   return {
     cls: "ok",
-    text: `${daysLeft} hari lagi (max ${totalDays} hr)`,
-    isAlert: false
+    daysLeft,
+    expiryDays,
+    text: `${daysLeft} hr lagi`,
+    isAlert: false,
   };
 }
 
@@ -609,25 +629,30 @@ function renderSchedule(links) {
     return;
   }
 
-  const alertLinks = links.filter((l) => scheduleStatus(l.last_checked_at, l.expiry_days).isAlert);
-  const overdueCount = alertLinks.length;
-  scheduleCount.textContent = overdueCount > 0 ? `${overdueCount} perlu dicek` : `${links.length} link`;
-
-  const alertBannerHtml = alertLinks.length > 0
-    ? `<div class="schedule-alert-banner">
-         ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${alertLinks.length} link yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari lagi). Harap cek manual!
-       </div>`
-    : "";
+  let totalAlertServers = 0;
 
   const rowsHtml = links
     .map((l) => {
-      const status = scheduleStatus(l.last_checked_at, l.expiry_days);
+      const servers = Array.isArray(l.servers) ? l.servers : [];
+      let linkHasAlert = false;
+
+      const serverBadgesHtml = servers
+        .map((s) => {
+          const st = calculateServerStatus(s, l.last_checked_at, l.created_at);
+          if (st.isAlert) {
+            linkHasAlert = true;
+            totalAlertServers++;
+          }
+          return `<span class="server-status-tag ${st.cls}">${escapeHtmlClient(s.label)}: ${st.text} (max ${st.expiryDays} hr)</span>`;
+        })
+        .join(" ");
+
       const name = (l.title || "").trim() || l.id;
       return `
-      <div class="schedule-row ${status.isAlert ? 'row-alert' : ''}" data-id="${l.id}">
+      <div class="schedule-row ${linkHasAlert ? "row-alert" : ""}" data-id="${l.id}">
         <div class="schedule-info">
           <div class="schedule-name">${escapeHtmlClient(name)}</div>
-          <div class="schedule-status ${status.cls}">${status.text}</div>
+          <div class="schedule-servers-list">${serverBadgesHtml}</div>
         </div>
         <div class="schedule-actions">
           <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
@@ -638,6 +663,14 @@ function renderSchedule(links) {
       </div>`;
     })
     .join("");
+
+  scheduleCount.textContent = totalAlertServers > 0 ? `${totalAlertServers} server perlu dicek` : `${links.length} link`;
+
+  const alertBannerHtml = totalAlertServers > 0
+    ? `<div class="schedule-alert-banner">
+         ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${totalAlertServers} server link yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari). Harap cek manual!
+       </div>`
+    : "";
 
   scheduleList.innerHTML = alertBannerHtml + rowsHtml;
 }
