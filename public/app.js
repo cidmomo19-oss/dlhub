@@ -165,9 +165,7 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
     </div>
     <div class="lane-row-fields">
       <input type="text" class="lane-label" placeholder="Nama server" maxlength="40">
-      <div class="lane-expiry-wrap">
-        <input type="number" class="lane-expiry" min="1" max="365" value="30" placeholder="Kadaluarsa (hari)">
-      </div>
+      <input type="number" class="lane-expiry" min="1" max="365" value="30" placeholder="Kadaluarsa (hari)">
       <input type="url" class="lane-url" placeholder="https://link-download-kamu">
     </div>
   `;
@@ -510,7 +508,10 @@ async function openEditModal(id) {
     }
 
     editLaneRows.innerHTML = "";
-    const servers = Array.isArray(data.servers) ? data.servers : [];
+    let servers = Array.isArray(data.servers) ? data.servers : [];
+    if (typeof data.servers === "string") {
+      try { servers = JSON.parse(data.servers); } catch { servers = []; }
+    }
     if (servers.length === 0) {
       addEditLaneRow("gofile");
     } else {
@@ -633,7 +634,11 @@ function renderSchedule(links) {
 
   const rowsHtml = links
     .map((l) => {
-      const servers = Array.isArray(l.servers) ? l.servers : [];
+      let servers = Array.isArray(l.servers) ? l.servers : [];
+      if (typeof l.servers === "string") {
+        try { servers = JSON.parse(l.servers); } catch { servers = []; }
+      }
+
       let linkHasAlert = false;
 
       const serverBadgesHtml = servers

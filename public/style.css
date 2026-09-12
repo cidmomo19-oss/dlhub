@@ -275,7 +275,7 @@ a { color: inherit; }
 }
 
 @media (min-width: 440px) {
-  .lane-row-fields { grid-template-columns: 1.4fr 1fr; }
+  .lane-row-fields { grid-template-columns: 1.2fr 0.8fr 1.5fr; }
 }
 
 .lane-row input[type="text"],
