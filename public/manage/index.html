@@ -51,6 +51,11 @@
             <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
           </div>
 
+          <div class="field">
+            <label for="expiryDays">Waktu kadaluarsa (hari)</label>
+            <input type="number" id="expiryDays" min="1" max="365" value="30" placeholder="30">
+          </div>
+
           <div class="field" style="margin-bottom:8px;">
             <div class="server-field-header">
               <label style="margin-bottom:0;">Server download</label>
@@ -94,7 +99,7 @@
           <h2 class="title">Jadwal cek link</h2>
           <span class="schedule-count" id="scheduleCount"></span>
         </div>
-        <p class="subtitle">Tiap link dianggap perlu dicek ulang tiap 30 hari sekali — misalnya buat mastiin link Gofile belum kadaluarsa.</p>
+        <p class="subtitle">Waktu kadaluarsa dihitung dari klik terakhir. Jika link tidak diklik dan hampir kadaluarsa (≤ 3 hari), notifikasi akan muncul di sini.</p>
         <div class="schedule-list" id="scheduleList">
           <p class="schedule-empty">Memuat...</p>
         </div>
@@ -111,7 +116,7 @@
         <h2 class="title" style="margin-bottom:0;">Edit halaman download</h2>
         <button type="button" class="modal-close-btn" id="editModalCloseBtn" aria-label="Tutup">×</button>
       </div>
-      <p class="subtitle" style="margin-top:6px; margin-bottom:16px;">Ubah nama, thumbnail, catatan, atau server download untuk link <code id="editLinkId"></code>.</p>
+      <p class="subtitle" style="margin-top:6px; margin-bottom:16px;">Ubah nama, thumbnail, catatan, durasi kadaluarsa, atau server download untuk link <code id="editLinkId"></code>.</p>
 
       <form id="editForm" novalidate>
         <div class="field">
@@ -130,6 +135,11 @@
         <div class="field">
           <label for="editDescription">Catatan <span class="optional">(opsional)</span></label>
           <textarea id="editDescription" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="editExpiryDays">Waktu kadaluarsa (hari)</label>
+          <input type="number" id="editExpiryDays" min="1" max="365" value="30" placeholder="30">
         </div>
 
         <div class="field" style="margin-bottom:8px;">

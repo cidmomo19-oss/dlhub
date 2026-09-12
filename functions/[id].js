@@ -97,6 +97,27 @@ function layout({ title, body, htmlLang }) {
 </head>
 <body>
 ${body}
+<script>
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.server-btn');
+  if (btn) {
+    var id = btn.getAttribute('data-id');
+    if (id) {
+      var payload = JSON.stringify({ id: id });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/click', payload);
+      } else {
+        fetch('/api/click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true
+        });
+      }
+    }
+  }
+});
+</script>
 </body>
 </html>`;
 }
@@ -112,7 +133,7 @@ function renderPage(t, row, servers) {
   const items = servers
     .map(
       (s) => `
-      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow">
+      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow" data-id="${escapeHtml(row.id)}">
         <span class="server-btn-label">${escapeHtml(s.label)}</span>
         <span class="server-btn-icon" aria-hidden="true">${downloadIcon}</span>
       </a>`

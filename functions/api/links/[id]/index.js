@@ -16,7 +16,7 @@ export async function onRequestGet(context) {
   }
 
   const row = await env.DB.prepare(
-    "SELECT id, title, description, thumbnail, servers, created_at, last_checked_at, views FROM links WHERE id = ?"
+    "SELECT id, title, description, thumbnail, servers, created_at, last_checked_at, expiry_days, views FROM links WHERE id = ?"
   )
     .bind(params.id)
     .first();
@@ -40,6 +40,7 @@ export async function onRequestGet(context) {
     servers,
     created_at: row.created_at,
     last_checked_at: row.last_checked_at,
+    expiry_days: row.expiry_days || 30,
     views: row.views,
   });
 }
@@ -69,7 +70,7 @@ export async function onRequestPut(context) {
     return jsonResponse({ error: "Body request bukan JSON yang valid." }, 400);
   }
 
-  const { title, description, thumbnail, servers } = body || {};
+  const { title, description, thumbnail, servers, expiry_days } = body || {};
 
   if (!Array.isArray(servers) || servers.length === 0) {
     return jsonResponse({ error: "Minimal harus ada 1 server." }, 400);
@@ -98,15 +99,18 @@ export async function onRequestPut(context) {
   }
   const cleanThumbnail = thumbnailValue ? new URL(thumbnailValue).toString() : "";
 
+  const expiryDaysParsed = parseInt(expiry_days, 10);
+  const expiryDays = !isNaN(expiryDaysParsed) && expiryDaysParsed > 0 ? expiryDaysParsed : 30;
+
   const cleanTitle = String(title || "").trim().slice(0, 100);
   const cleanDescription = String(description || "").trim().slice(0, 300);
 
   await env.DB.prepare(
     `UPDATE links
-     SET title = ?, description = ?, thumbnail = ?, servers = ?
+     SET title = ?, description = ?, thumbnail = ?, servers = ?, expiry_days = ?
      WHERE id = ?`
   )
-    .bind(cleanTitle, cleanDescription, cleanThumbnail, JSON.stringify(cleanServers), params.id)
+    .bind(cleanTitle, cleanDescription, cleanThumbnail, JSON.stringify(cleanServers), expiryDays, params.id)
     .run();
 
   return jsonResponse({
@@ -115,6 +119,7 @@ export async function onRequestPut(context) {
     description: cleanDescription,
     thumbnail: cleanThumbnail,
     servers: cleanServers,
+    expiry_days: expiryDays,
   });
 }
 

@@ -15,7 +15,6 @@ const HOSTS = [
 ];
 
 const STORAGE_KEY = "dlhub_admin_key";
-const CHECK_INTERVAL_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ---------- Gate (admin key) ----------
@@ -106,6 +105,7 @@ const toast = document.getElementById("toast");
 const thumbnailInput = document.getElementById("thumbnail");
 const thumbPreview = document.getElementById("thumbPreview");
 const thumbPreviewImg = document.getElementById("thumbPreviewImg");
+const expiryDaysInput = document.getElementById("expiryDays");
 
 thumbnailInput.addEventListener("input", () => {
   const url = thumbnailInput.value.trim();
@@ -272,6 +272,7 @@ form.addEventListener("submit", async (e) => {
   const title = document.getElementById("title").value.trim();
   const description = document.getElementById("description").value.trim();
   const thumbnail = thumbnailInput.value.trim();
+  const expiry_days = parseInt(expiryDaysInput?.value, 10) || 30;
 
   const servers = [];
   laneRows.querySelectorAll(".lane-row").forEach((row) => {
@@ -298,7 +299,7 @@ form.addEventListener("submit", async (e) => {
         "Content-Type": "application/json",
         "x-admin-key": verifiedKey,
       },
-      body: JSON.stringify({ title, description, thumbnail, servers }),
+      body: JSON.stringify({ title, description, thumbnail, expiry_days, servers }),
     });
     const data = await res.json();
 
@@ -336,6 +337,7 @@ resetBtn.addEventListener("click", () => {
   form.style.display = "";
   document.getElementById("title").value = "";
   document.getElementById("description").value = "";
+  if (expiryDaysInput) expiryDaysInput.value = "30";
   thumbnailInput.value = "";
   thumbPreview.style.display = "none";
   resetLanes();
@@ -350,6 +352,7 @@ const editThumbnailInput = document.getElementById("editThumbnail");
 const editThumbPreview = document.getElementById("editThumbPreview");
 const editThumbPreviewImg = document.getElementById("editThumbPreviewImg");
 const editDescriptionInput = document.getElementById("editDescription");
+const editExpiryDaysInput = document.getElementById("editExpiryDays");
 const editLaneRows = document.getElementById("editLaneRows");
 const editAddLaneBtn = document.getElementById("editAddLane");
 const editForm = document.getElementById("editForm");
@@ -486,6 +489,7 @@ async function openEditModal(id) {
     editTitleInput.value = data.title || "";
     editDescriptionInput.value = data.description || "";
     editThumbnailInput.value = data.thumbnail || "";
+    if (editExpiryDaysInput) editExpiryDaysInput.value = data.expiry_days || 30;
 
     if (data.thumbnail) {
       editThumbPreviewImg.src = data.thumbnail;
@@ -518,6 +522,7 @@ if (editForm) {
     const title = editTitleInput.value.trim();
     const description = editDescriptionInput.value.trim();
     const thumbnail = editThumbnailInput.value.trim();
+    const expiry_days = parseInt(editExpiryDaysInput?.value, 10) || 30;
 
     const servers = [];
     editLaneRows.querySelectorAll(".lane-row").forEach((row) => {
@@ -544,7 +549,7 @@ if (editForm) {
           "Content-Type": "application/json",
           "x-admin-key": verifiedKey,
         },
-        body: JSON.stringify({ title, description, thumbnail, servers }),
+        body: JSON.stringify({ title, description, thumbnail, expiry_days, servers }),
       });
       const data = await res.json();
 
@@ -565,22 +570,36 @@ if (editForm) {
   });
 }
 
-// ---------- Jadwal cek link (tiap 30 hari sekali) ----------
+// ---------- Jadwal cek link ----------
 
 const scheduleList = document.getElementById("scheduleList");
 const scheduleCount = document.getElementById("scheduleCount");
 
-function scheduleStatus(lastCheckedAt) {
-  const daysSince = Math.floor((Date.now() - lastCheckedAt) / DAY_MS);
-  const daysLeft = CHECK_INTERVAL_DAYS - daysSince;
+function scheduleStatus(lastCheckedAt, expiryDays = 30) {
+  const totalDays = expiryDays > 0 ? expiryDays : 30;
+  const expiryTime = lastCheckedAt + totalDays * DAY_MS;
+  const msLeft = expiryTime - Date.now();
+  const daysLeft = Math.ceil(msLeft / DAY_MS);
 
   if (daysLeft <= 0) {
-    return { cls: "overdue", text: daysLeft === 0 ? "Jatuh tempo hari ini" : `Telat ${Math.abs(daysLeft)} hari` };
+    return {
+      cls: "overdue",
+      text: daysLeft === 0 ? `Jatuh tempo hari ini (${totalDays} hr)` : `Kadaluarsa ${Math.abs(daysLeft)} hari lalu (${totalDays} hr)`,
+      isAlert: true
+    };
   }
-  if (daysLeft <= 2) {
-    return { cls: "due-soon", text: `${daysLeft} hari lagi` };
+  if (daysLeft <= 3) {
+    return {
+      cls: "due-soon",
+      text: `Hampir kadaluarsa (${daysLeft} hari lagi / max ${totalDays} hr)`,
+      isAlert: true
+    };
   }
-  return { cls: "ok", text: `${daysLeft} hari lagi` };
+  return {
+    cls: "ok",
+    text: `${daysLeft} hari lagi (max ${totalDays} hr)`,
+    isAlert: false
+  };
 }
 
 function renderSchedule(links) {
@@ -590,15 +609,22 @@ function renderSchedule(links) {
     return;
   }
 
-  const overdueCount = links.filter((l) => scheduleStatus(l.last_checked_at).cls === "overdue").length;
+  const alertLinks = links.filter((l) => scheduleStatus(l.last_checked_at, l.expiry_days).isAlert);
+  const overdueCount = alertLinks.length;
   scheduleCount.textContent = overdueCount > 0 ? `${overdueCount} perlu dicek` : `${links.length} link`;
 
-  scheduleList.innerHTML = links
+  const alertBannerHtml = alertLinks.length > 0
+    ? `<div class="schedule-alert-banner">
+         ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${alertLinks.length} link yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari lagi). Harap cek manual!
+       </div>`
+    : "";
+
+  const rowsHtml = links
     .map((l) => {
-      const status = scheduleStatus(l.last_checked_at);
+      const status = scheduleStatus(l.last_checked_at, l.expiry_days);
       const name = (l.title || "").trim() || l.id;
       return `
-      <div class="schedule-row" data-id="${l.id}">
+      <div class="schedule-row ${status.isAlert ? 'row-alert' : ''}" data-id="${l.id}">
         <div class="schedule-info">
           <div class="schedule-name">${escapeHtmlClient(name)}</div>
           <div class="schedule-status ${status.cls}">${status.text}</div>
@@ -612,6 +638,8 @@ function renderSchedule(links) {
       </div>`;
     })
     .join("");
+
+  scheduleList.innerHTML = alertBannerHtml + rowsHtml;
 }
 
 function escapeHtmlClient(str) {
