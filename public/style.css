@@ -541,41 +541,76 @@ a { color: inherit; }
 
 .schedule-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  flex-wrap: wrap;
 }
 
 .schedule-row.row-alert {
   border-color: rgba(245, 185, 66, 0.4);
 }
 
-.schedule-info { min-width: 0; }
+.schedule-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+
+}
 
 .schedule-name {
-  font-weight: 500;
-  font-size: 13.5px;
+  font-weight: 600;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
 
 .schedule-servers-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 4px;
+}
+
+.schedule-server-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.schedule-server-item.server-alert {
+  border-color: rgba(245, 185, 66, 0.3);
+}
+
+.schedule-server-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .server-status-tag {
   display: inline-block;
-  font-size: 11.5px;
+  font-size: 12px;
   padding: 2px 7px;
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-dim);
 }
@@ -593,14 +628,6 @@ a { color: inherit; }
   font-weight: 600;
 }
 
-.schedule-status {
-  font-size: 12px;
-  margin-top: 2px;
-  color: var(--text-faint);
-}
-.schedule-status.due-soon { color: var(--warning); }
-.schedule-status.overdue { color: var(--danger); font-weight: 600; }
-
 .schedule-actions {
   display: flex;
   align-items: center;
@@ -617,31 +644,31 @@ a { color: inherit; }
 .schedule-actions a:hover { color: var(--accent); }
 
 .schedule-edit-btn,
-.schedule-check-btn {
-  padding: 7px 10px;
+.schedule-server-check-btn {
+  padding: 5px 9px;
   border-radius: 6px;
   border: 1px solid var(--border-strong);
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--text);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
 }
 .schedule-edit-btn:hover,
-.schedule-check-btn:hover { border-color: var(--accent); color: var(--accent); }
+.schedule-server-check-btn:hover { border-color: var(--accent); color: var(--accent); }
 .schedule-edit-btn:disabled,
-.schedule-check-btn:disabled { opacity: .55; cursor: not-allowed; }
+.schedule-server-check-btn:disabled { opacity: .55; cursor: not-allowed; }
 
 .schedule-delete-btn {
-  padding: 7px 10px;
+  padding: 5px 9px;
   border-radius: 6px;
   border: 1px solid var(--border-strong);
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;

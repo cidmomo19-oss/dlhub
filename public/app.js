@@ -641,29 +641,39 @@ function renderSchedule(links) {
 
       let linkHasAlert = false;
 
-      const serverBadgesHtml = servers
-        .map((s) => {
+      const serverItemsHtml = servers
+        .map((s, idx) => {
           const st = calculateServerStatus(s, l.last_checked_at, l.created_at);
           if (st.isAlert) {
             linkHasAlert = true;
             totalAlertServers++;
           }
-          return `<span class="server-status-tag ${st.cls}">${escapeHtmlClient(s.label)}: ${st.text} (max ${st.expiryDays} hr)</span>`;
+          return `
+            <div class="schedule-server-item ${st.isAlert ? "server-alert" : ""}">
+              <div class="schedule-server-details">
+                <span class="server-status-tag ${st.cls}">${escapeHtmlClient(s.label)}: ${st.text} (max ${st.expiryDays} hr)</span>
+              </div>
+              <button type="button" class="schedule-server-check-btn" data-id="${l.id}" data-server-index="${idx}">
+                Tandai sudah dicek
+              </button>
+            </div>
+          `;
         })
-        .join(" ");
+        .join("");
 
       const name = (l.title || "").trim() || l.id;
       return `
       <div class="schedule-row ${linkHasAlert ? "row-alert" : ""}" data-id="${l.id}">
         <div class="schedule-info">
-          <div class="schedule-name">${escapeHtmlClient(name)}</div>
-          <div class="schedule-servers-list">${serverBadgesHtml}</div>
-        </div>
-        <div class="schedule-actions">
-          <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
-          <button type="button" class="schedule-edit-btn" data-id="${l.id}">Edit</button>
-          <button type="button" class="schedule-check-btn" data-id="${l.id}">Tandai sudah dicek</button>
-          <button type="button" class="schedule-delete-btn" data-id="${l.id}">Hapus</button>
+          <div class="schedule-name-row">
+            <span class="schedule-name">${escapeHtmlClient(name)}</span>
+            <div class="schedule-actions">
+              <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
+              <button type="button" class="schedule-edit-btn" data-id="${l.id}">Edit</button>
+              <button type="button" class="schedule-delete-btn" data-id="${l.id}">Hapus</button>
+            </div>
+          </div>
+          <div class="schedule-servers-list">${serverItemsHtml}</div>
         </div>
       </div>`;
     })
@@ -673,7 +683,7 @@ function renderSchedule(links) {
 
   const alertBannerHtml = totalAlertServers > 0
     ? `<div class="schedule-alert-banner">
-         ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${totalAlertServers} server link yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari). Harap cek manual!
+         ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${totalAlertServers} link download/server yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari). Harap cek manual!
        </div>`
     : "";
 
@@ -708,30 +718,35 @@ scheduleList.addEventListener("click", async (e) => {
     return;
   }
 
-  const checkBtn = e.target.closest(".schedule-check-btn");
-  if (checkBtn) {
-    const id = checkBtn.dataset.id;
+  const serverCheckBtn = e.target.closest(".schedule-server-check-btn");
+  if (serverCheckBtn) {
+    const id = serverCheckBtn.dataset.id;
+    const serverIndex = parseInt(serverCheckBtn.dataset.serverIndex, 10);
 
-    checkBtn.disabled = true;
-    checkBtn.textContent = "Menyimpan...";
+    serverCheckBtn.disabled = true;
+    serverCheckBtn.textContent = "Menyimpan...";
     try {
       const res = await fetch(`/api/links/${id}/check`, {
         method: "POST",
-        headers: { "x-admin-key": verifiedKey },
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": verifiedKey,
+        },
+        body: JSON.stringify({ serverIndex }),
       });
       if (res.ok) {
-        showToast("Ditandai udah dicek ✓");
+        showToast("Server ditandai udah dicek ✓");
         loadSchedule();
       } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal nandain link.");
-        checkBtn.disabled = false;
-        checkBtn.textContent = "Tandai sudah dicek";
+        showToast(data.error || "Gagal nandain server.");
+        serverCheckBtn.disabled = false;
+        serverCheckBtn.textContent = "Tandai sudah dicek";
       }
     } catch {
       showToast("Nggak bisa konek ke server.");
-      checkBtn.disabled = false;
-      checkBtn.textContent = "Tandai sudah dicek";
+      serverCheckBtn.disabled = false;
+      serverCheckBtn.textContent = "Tandai sudah dicek";
     }
     return;
   }

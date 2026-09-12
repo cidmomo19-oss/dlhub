@@ -18,15 +18,29 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Link nggak ketemu." }, 404);
   }
 
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
   let servers = [];
   try {
-    servers = typeof row.servers === "string" ? JSON.parse(row.servers) : [];
+    servers = typeof row.servers === "string" ? JSON.parse(row.servers) : (row.servers || []);
   } catch {
     servers = [];
   }
 
   const now = Date.now();
-  servers = servers.map((s) => ({ ...s, last_clicked_at: now }));
+  const index = typeof body.serverIndex === "number" ? body.serverIndex : null;
+
+  if (index !== null && index >= 0 && index < servers.length) {
+    servers[index].last_clicked_at = now;
+  } else {
+    // If no server index is specified, update all servers
+    servers = servers.map((s) => ({ ...s, last_clicked_at: now }));
+  }
 
   await env.DB.prepare("UPDATE links SET last_checked_at = ?, servers = ? WHERE id = ?")
     .bind(now, JSON.stringify(servers), params.id)
