@@ -1,6 +1,4 @@
-// Preset server yang umum dipakai. Ini CUMA nentuin default label/warna pas
-// dipilih di dropdown — bebas diedit, dan bisa nambah host baru di sini
-// kapan aja (itu maksud "universal"-nya).
+// Preset server
 const HOSTS = [
   { value: "gofile", label: "Gofile", color: "#00c58e" },
   { value: "pixeldrain", label: "Pixeldrain", color: "#29b6a8" },
@@ -40,39 +38,43 @@ async function verifyKey(key) {
 
 function unlock(key) {
   verifiedKey = key;
-  gateView.style.display = "none";
-  createView.style.display = "";
+  if (gateView) gateView.style.display = "none";
+  if (createView) createView.style.display = "";
   loadSchedule();
 }
 
 function showGateError(msg) {
-  gateError.textContent = msg;
-  gateError.classList.add("show");
+  if (gateError) {
+    gateError.textContent = msg;
+    gateError.classList.add("show");
+  }
 }
 
-gateForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  gateError.classList.remove("show");
-  const key = gateKeyInput.value;
-  if (!key) return;
+if (gateForm) {
+  gateForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (gateError) gateError.classList.remove("show");
+    const key = gateKeyInput.value;
+    if (!key) return;
 
-  gateSubmitBtn.disabled = true;
-  gateSubmitBtn.textContent = "Mengecek...";
-  try {
-    const { ok, error } = await verifyKey(key);
-    if (!ok) {
-      showGateError(error || "Admin key salah.");
-      return;
+    gateSubmitBtn.disabled = true;
+    gateSubmitBtn.textContent = "Mengecek...";
+    try {
+      const { ok, error } = await verifyKey(key);
+      if (!ok) {
+        showGateError(error || "Admin key salah.");
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, key);
+      unlock(key);
+    } catch {
+      showGateError("Nggak bisa konek ke server. Coba lagi.");
+    } finally {
+      gateSubmitBtn.disabled = false;
+      gateSubmitBtn.textContent = "Masuk Dashboard";
     }
-    localStorage.setItem(STORAGE_KEY, key);
-    unlock(key);
-  } catch {
-    showGateError("Nggak bisa konek ke server. Coba lagi.");
-  } finally {
-    gateSubmitBtn.disabled = false;
-    gateSubmitBtn.textContent = "Masuk";
-  }
-});
+  });
+}
 
 (async function initGate() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -85,11 +87,35 @@ gateForm.addEventListener("submit", async (e) => {
       localStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    // Offline/error pas cek awal — biarin gate tampil, user bisa coba manual.
+    // Offline/error
   }
 })();
 
-// ---------- Create form (baru aktif setelah gate ke-buka) ----------
+// ---------- Tabs Switcher ----------
+
+const tabListBtn = document.getElementById("tabListBtn");
+const tabCreateBtn = document.getElementById("tabCreateBtn");
+const listTab = document.getElementById("listTab");
+const createTab = document.getElementById("createTab");
+
+function switchTab(targetTab) {
+  if (targetTab === "createTab") {
+    tabCreateBtn?.classList.add("active");
+    tabListBtn?.classList.remove("active");
+    if (createTab) createTab.style.display = "block";
+    if (listTab) listTab.style.display = "none";
+  } else {
+    tabListBtn?.classList.add("active");
+    tabCreateBtn?.classList.remove("active");
+    if (listTab) listTab.style.display = "block";
+    if (createTab) createTab.style.display = "none";
+  }
+}
+
+if (tabListBtn) tabListBtn.addEventListener("click", () => switchTab("listTab"));
+if (tabCreateBtn) tabCreateBtn.addEventListener("click", () => switchTab("createTab"));
+
+// ---------- Create form ----------
 
 const laneRows = document.getElementById("laneRows");
 const addLaneBtn = document.getElementById("addLane");
@@ -106,20 +132,22 @@ const thumbnailInput = document.getElementById("thumbnail");
 const thumbPreview = document.getElementById("thumbPreview");
 const thumbPreviewImg = document.getElementById("thumbPreviewImg");
 
-thumbnailInput.addEventListener("input", () => {
-  const url = thumbnailInput.value.trim();
-  if (!url) {
+if (thumbnailInput && thumbPreviewImg) {
+  thumbnailInput.addEventListener("input", () => {
+    const url = thumbnailInput.value.trim();
+    if (!url) {
+      thumbPreview.style.display = "none";
+      return;
+    }
+    thumbPreviewImg.src = url;
+  });
+  thumbPreviewImg.addEventListener("load", () => {
+    thumbPreview.style.display = "";
+  });
+  thumbPreviewImg.addEventListener("error", () => {
     thumbPreview.style.display = "none";
-    return;
-  }
-  thumbPreviewImg.src = url;
-});
-thumbPreviewImg.addEventListener("load", () => {
-  thumbPreview.style.display = "";
-});
-thumbPreviewImg.addEventListener("error", () => {
-  thumbPreview.style.display = "none";
-});
+  });
+}
 
 const toggleMassBtn = document.getElementById("toggleMassBtn");
 const massInputBox = document.getElementById("massInputBox");
@@ -145,9 +173,6 @@ if (toggleMassBtn && massInputBox) {
     const isHidden = massInputBox.style.display === "none";
     massInputBox.style.display = isHidden ? "block" : "none";
     toggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama | Hari)";
-    if (isHidden && massInputText) {
-      massInputText.focus();
-    }
   });
 }
 
@@ -164,9 +189,9 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
       <button type="button" class="lane-remove" aria-label="Hapus server">×</button>
     </div>
     <div class="lane-row-fields">
-      <input type="text" class="lane-label" placeholder="Nama server" maxlength="40">
-      <input type="number" class="lane-expiry" min="1" max="365" value="30" placeholder="Kadaluarsa (hari)">
-      <input type="url" class="lane-url" placeholder="https://link-download-kamu">
+      <input type="text" class="lane-label" placeholder="Nama Server" maxlength="40">
+      <input type="number" class="lane-expiry" min="1" max="365" value="30" placeholder="Durasi (Hari)">
+      <input type="url" class="lane-url" placeholder="https://link-download">
     </div>
   `;
 
@@ -186,9 +211,7 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
   } else {
     applyPreset();
   }
-  if (customUrl !== undefined) {
-    urlInput.value = customUrl;
-  }
+  if (customUrl !== undefined) urlInput.value = customUrl;
   if (customExpiryDays !== undefined) {
     expiryInput.value = customExpiryDays;
   } else {
@@ -206,7 +229,7 @@ function createLaneRowElement(containerElement, presetValue, customLabel, custom
 }
 
 function addLaneRow(presetValue, customLabel, customUrl, customExpiryDays) {
-  createLaneRowElement(laneRows, presetValue, customLabel, customUrl, customExpiryDays);
+  if (laneRows) createLaneRowElement(laneRows, presetValue, customLabel, customUrl, customExpiryDays);
 }
 
 if (massApplyBtn && massInputText) {
@@ -250,9 +273,10 @@ if (massApplyBtn && massInputText) {
   });
 }
 
-addLaneBtn.addEventListener("click", () => addLaneRow());
+if (addLaneBtn) addLaneBtn.addEventListener("click", () => addLaneRow());
 
 function resetLanes() {
+  if (!laneRows) return;
   laneRows.innerHTML = "";
   addLaneRow("gofile");
   addLaneRow("terabox");
@@ -260,99 +284,110 @@ function resetLanes() {
 resetLanes();
 
 function showError(msg) {
-  formError.textContent = msg;
-  formError.classList.add("show");
+  if (formError) {
+    formError.textContent = msg;
+    formError.classList.add("show");
+  }
 }
 function clearError() {
-  formError.textContent = "";
-  formError.classList.remove("show");
+  if (formError) {
+    formError.textContent = "";
+    formError.classList.remove("show");
+  }
 }
 
 function showToast(msg) {
+  if (!toast) return;
   toast.textContent = msg;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 1800);
 }
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  clearError();
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
 
-  const title = document.getElementById("title").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const thumbnail = thumbnailInput.value.trim();
+    const title = document.getElementById("title").value.trim();
+    const description = document.getElementById("description").value.trim();
+    const thumbnail = thumbnailInput ? thumbnailInput.value.trim() : "";
 
-  const servers = [];
-  laneRows.querySelectorAll(".lane-row").forEach((row) => {
-    const url = row.querySelector(".lane-url").value.trim();
-    if (!url) return;
-    const hostValue = row.querySelector(".lane-host").value;
-    const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
-    const label = row.querySelector(".lane-label").value.trim() || preset.label;
-    const expiry_days = parseInt(row.querySelector(".lane-expiry").value, 10) || 30;
+    const servers = [];
+    laneRows.querySelectorAll(".lane-row").forEach((row) => {
+      const url = row.querySelector(".lane-url").value.trim();
+      if (!url) return;
+      const hostValue = row.querySelector(".lane-host").value;
+      const preset = HOSTS.find((h) => h.value === hostValue) || HOSTS[HOSTS.length - 1];
+      const label = row.querySelector(".lane-label").value.trim() || preset.label;
+      const expiry_days = parseInt(row.querySelector(".lane-expiry").value, 10) || 30;
 
-    servers.push({ label, url, color: preset.color, expiry_days });
-  });
-
-  if (servers.length === 0) {
-    showError("Isi minimal 1 link server yang valid.");
-    return;
-  }
-
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Membuat...";
-
-  try {
-    const res = await fetch("/api/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-key": verifiedKey,
-      },
-      body: JSON.stringify({ title, description, thumbnail, servers }),
+      servers.push({ label, url, color: preset.color, expiry_days });
     });
-    const data = await res.json();
 
-    if (!res.ok) {
-      showError(data.error || "Gagal membuat halaman.");
+    if (servers.length === 0) {
+      showError("Isi minimal 1 link server yang valid.");
       return;
     }
 
-    resultLink.value = data.url;
-    openBtn.href = data.url;
-    form.style.display = "none";
-    resultBox.classList.add("show");
-    loadSchedule();
-  } catch (err) {
-    showError("Nggak bisa konek ke server. Coba lagi.");
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Buat halaman";
-  }
-});
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Membuat...";
 
-copyBtn.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(resultLink.value);
-    showToast("Link disalin ✓");
-  } catch {
-    resultLink.select();
-    document.execCommand("copy");
-    showToast("Link disalin ✓");
-  }
-});
+    try {
+      const res = await fetch("/api/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": verifiedKey,
+        },
+        body: JSON.stringify({ title, description, thumbnail, servers }),
+      });
+      const data = await res.json();
 
-resetBtn.addEventListener("click", () => {
-  resultBox.classList.remove("show");
-  form.style.display = "";
-  document.getElementById("title").value = "";
-  document.getElementById("description").value = "";
-  thumbnailInput.value = "";
-  thumbPreview.style.display = "none";
-  resetLanes();
-});
+      if (!res.ok) {
+        showError(data.error || "Gagal membuat halaman.");
+        return;
+      }
 
-// ---------- Edit Form Modal Logic ----------
+      resultLink.value = data.url;
+      openBtn.href = data.url;
+      form.style.display = "none";
+      resultBox.classList.add("show");
+      loadSchedule();
+    } catch {
+      showError("Nggak bisa konek ke server. Coba lagi.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Buat Halaman Download";
+    }
+  });
+}
+
+if (copyBtn) {
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(resultLink.value);
+      showToast("Link disalin ✓");
+    } catch {
+      resultLink.select();
+      document.execCommand("copy");
+      showToast("Link disalin ✓");
+    }
+  });
+}
+
+if (resetBtn) {
+  resetBtn.addEventListener("click", () => {
+    resultBox.classList.remove("show");
+    form.style.display = "";
+    document.getElementById("title").value = "";
+    document.getElementById("description").value = "";
+    if (thumbnailInput) thumbnailInput.value = "";
+    if (thumbPreview) thumbPreview.style.display = "none";
+    resetLanes();
+  });
+}
+
+// ---------- Edit Form Modal ----------
 
 const editModal = document.getElementById("editModal");
 const editLinkIdEl = document.getElementById("editLinkId");
@@ -376,7 +411,7 @@ const editMassApplyBtn = document.getElementById("editMassApplyBtn");
 
 let activeEditingId = null;
 
-if (editThumbnailInput) {
+if (editThumbnailInput && editThumbPreviewImg) {
   editThumbnailInput.addEventListener("input", () => {
     const url = editThumbnailInput.value.trim();
     if (!url) {
@@ -397,15 +432,12 @@ if (editToggleMassBtn && editMassInputBox) {
   editToggleMassBtn.addEventListener("click", () => {
     const isHidden = editMassInputBox.style.display === "none";
     editMassInputBox.style.display = isHidden ? "block" : "none";
-    editToggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal (Link | Nama | Hari)";
-    if (isHidden && editMassInputText) {
-      editMassInputText.focus();
-    }
+    editToggleMassBtn.textContent = isHidden ? "✕ Tutup Mode Massal" : "⚡ Mode Massal";
   });
 }
 
 function addEditLaneRow(presetValue, customLabel, customUrl, customExpiryDays) {
-  createLaneRowElement(editLaneRows, presetValue, customLabel, customUrl, customExpiryDays);
+  if (editLaneRows) createLaneRowElement(editLaneRows, presetValue, customLabel, customUrl, customExpiryDays);
 }
 
 if (editMassApplyBtn && editMassInputText) {
@@ -449,9 +481,7 @@ if (editMassApplyBtn && editMassInputText) {
   });
 }
 
-if (editAddLaneBtn) {
-  editAddLaneBtn.addEventListener("click", () => addEditLaneRow());
-}
+if (editAddLaneBtn) editAddLaneBtn.addEventListener("click", () => addEditLaneRow());
 
 function showEditError(msg) {
   if (editFormError) {
@@ -482,7 +512,7 @@ async function openEditModal(id) {
   if (editLinkIdEl) editLinkIdEl.textContent = id;
 
   if (editMassInputBox) editMassInputBox.style.display = "none";
-  if (editToggleMassBtn) editToggleMassBtn.textContent = "⚡ Mode Massal (Link | Nama | Hari)";
+  if (editToggleMassBtn) editToggleMassBtn.textContent = "⚡ Mode Massal";
   if (editMassInputText) editMassInputText.value = "";
 
   if (editModal) editModal.style.display = "flex";
@@ -503,6 +533,7 @@ async function openEditModal(id) {
 
     if (data.thumbnail) {
       editThumbPreviewImg.src = data.thumbnail;
+      editThumbPreview.style.display = "";
     } else {
       editThumbPreview.style.display = "none";
     }
@@ -584,10 +615,11 @@ if (editForm) {
   });
 }
 
-// ---------- Jadwal cek link ----------
+// ---------- Schedule / Links List ----------
 
 const scheduleList = document.getElementById("scheduleList");
 const scheduleCount = document.getElementById("scheduleCount");
+const scheduleAlertArea = document.getElementById("scheduleAlertArea");
 
 function calculateServerStatus(server, linkLastChecked, linkCreatedAt) {
   const lastClicked = server.last_clicked_at || linkLastChecked || linkCreatedAt || Date.now();
@@ -601,7 +633,7 @@ function calculateServerStatus(server, linkLastChecked, linkCreatedAt) {
       cls: "overdue",
       daysLeft,
       expiryDays,
-      text: daysLeft === 0 ? "Jatuh tempo hari ini" : `Kadaluarsa ${Math.abs(daysLeft)} hr lalu`,
+      text: daysLeft === 0 ? "Hari ini" : `Kadaluarsa (${Math.abs(daysLeft)} hr lalu)`,
       isAlert: true,
     };
   }
@@ -610,7 +642,7 @@ function calculateServerStatus(server, linkLastChecked, linkCreatedAt) {
       cls: "due-soon",
       daysLeft,
       expiryDays,
-      text: `Hampir kadaluarsa (${daysLeft} hr lagi)`,
+      text: `${daysLeft} hr lagi`,
       isAlert: true,
     };
   }
@@ -624,9 +656,12 @@ function calculateServerStatus(server, linkLastChecked, linkCreatedAt) {
 }
 
 function renderSchedule(links) {
+  if (!scheduleList) return;
+
   if (links.length === 0) {
-    scheduleList.innerHTML = '<p class="schedule-empty">Belum ada halaman yang dibuat.</p>';
-    scheduleCount.textContent = "";
+    scheduleList.innerHTML = '<p class="schedule-empty">Belum ada link download yang dibuat.</p>';
+    if (scheduleCount) scheduleCount.textContent = "0";
+    if (scheduleAlertArea) scheduleAlertArea.innerHTML = "";
     return;
   }
 
@@ -649,45 +684,52 @@ function renderSchedule(links) {
             totalAlertServers++;
           }
           return `
-            <div class="schedule-server-item ${st.isAlert ? "server-alert" : ""}">
-              <div class="schedule-server-details">
-                <span class="server-status-tag ${st.cls}">${escapeHtmlClient(s.label)}: ${st.text} (max ${st.expiryDays} hr)</span>
+            <div class="server-item-row ${st.isAlert ? "status-alert" : ""}">
+              <div class="server-info">
+                <span class="server-name">${escapeHtmlClient(s.label)}</span>
+                <span class="badge-status ${st.cls}">${st.text}</span>
               </div>
-              <button type="button" class="schedule-server-check-btn" data-id="${l.id}" data-server-index="${idx}">
-                Tandai sudah dicek
+              <button type="button" class="btn-check-server" data-id="${l.id}" data-server-index="${idx}">
+                ✓ Cek
               </button>
             </div>
           `;
         })
         .join("");
 
-      const name = (l.title || "").trim() || l.id;
+      const titleName = (l.title || "").trim() || "Paket Download";
       return `
-      <div class="schedule-row ${linkHasAlert ? "row-alert" : ""}" data-id="${l.id}">
-        <div class="schedule-info">
-          <div class="schedule-name-row">
-            <span class="schedule-name">${escapeHtmlClient(name)}</span>
-            <div class="schedule-actions">
-              <a href="/${l.id}" target="_blank" rel="noopener">Buka</a>
-              <button type="button" class="schedule-edit-btn" data-id="${l.id}">Edit</button>
-              <button type="button" class="schedule-delete-btn" data-id="${l.id}">Hapus</button>
-            </div>
+      <div class="link-card ${linkHasAlert ? "has-alert" : ""}" data-id="${l.id}">
+        <div class="link-card-head">
+          <div class="link-card-title-group">
+            <h3 class="link-card-title">${escapeHtmlClient(titleName)}</h3>
+            <span class="link-card-id">/${l.id}</span>
           </div>
-          <div class="schedule-servers-list">${serverItemsHtml}</div>
+          <div class="link-card-actions">
+            <a href="/${l.id}" target="_blank" rel="noopener" class="btn-icon-text">↗ Buka</a>
+            <button type="button" class="btn-icon-text edit-btn" data-id="${l.id}">✏️ Edit</button>
+            <button type="button" class="btn-icon-text danger delete-btn" data-id="${l.id}">🗑 Hapus</button>
+          </div>
         </div>
+        <div class="link-servers-grid">${serverItemsHtml}</div>
       </div>`;
     })
     .join("");
 
-  scheduleCount.textContent = totalAlertServers > 0 ? `${totalAlertServers} server perlu dicek` : `${links.length} link`;
+  if (scheduleCount) scheduleCount.textContent = `${links.length}`;
 
-  const alertBannerHtml = totalAlertServers > 0
-    ? `<div class="schedule-alert-banner">
-         ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${totalAlertServers} link download/server yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari). Harap cek manual!
-       </div>`
-    : "";
+  if (scheduleAlertArea) {
+    if (totalAlertServers > 0) {
+      scheduleAlertArea.innerHTML = `
+        <div class="dash-alert-banner">
+          ⚠️ <strong>Notifikasi Kadaluarsa:</strong> Ada ${totalAlertServers} server link yang tidak diklik &amp; hampir/sudah kadaluarsa (≤ 3 hari). Harap cek manual!
+        </div>`;
+    } else {
+      scheduleAlertArea.innerHTML = "";
+    }
+  }
 
-  scheduleList.innerHTML = alertBannerHtml + rowsHtml;
+  scheduleList.innerHTML = rowsHtml;
 }
 
 function escapeHtmlClient(str) {
@@ -697,11 +739,12 @@ function escapeHtmlClient(str) {
 }
 
 async function loadSchedule() {
+  if (!scheduleList) return;
   try {
     const res = await fetch("/api/links", { headers: { "x-admin-key": verifiedKey } });
     const data = await res.json();
     if (!res.ok) {
-      scheduleList.innerHTML = `<p class="schedule-empty">${data.error || "Gagal memuat jadwal."}</p>`;
+      scheduleList.innerHTML = `<p class="schedule-empty">${data.error || "Gagal memuat data link."}</p>`;
       return;
     }
     renderSchedule(data.links || []);
@@ -710,78 +753,78 @@ async function loadSchedule() {
   }
 }
 
-scheduleList.addEventListener("click", async (e) => {
-  const editBtn = e.target.closest(".schedule-edit-btn");
-  if (editBtn) {
-    const id = editBtn.dataset.id;
-    openEditModal(id);
-    return;
-  }
-
-  const serverCheckBtn = e.target.closest(".schedule-server-check-btn");
-  if (serverCheckBtn) {
-    const id = serverCheckBtn.dataset.id;
-    const serverIndex = parseInt(serverCheckBtn.dataset.serverIndex, 10);
-
-    serverCheckBtn.disabled = true;
-    serverCheckBtn.textContent = "Menyimpan...";
-    try {
-      const res = await fetch(`/api/links/${id}/check`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-key": verifiedKey,
-        },
-        body: JSON.stringify({ serverIndex }),
-      });
-      if (res.ok) {
-        showToast("Server ditandai udah dicek ✓");
-        loadSchedule();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal nandain server.");
-        serverCheckBtn.disabled = false;
-        serverCheckBtn.textContent = "Tandai sudah dicek";
-      }
-    } catch {
-      showToast("Nggak bisa konek ke server.");
-      serverCheckBtn.disabled = false;
-      serverCheckBtn.textContent = "Tandai sudah dicek";
+if (scheduleList) {
+  scheduleList.addEventListener("click", async (e) => {
+    const editBtn = e.target.closest(".edit-btn");
+    if (editBtn) {
+      const id = editBtn.dataset.id;
+      openEditModal(id);
+      return;
     }
-    return;
-  }
 
-  const deleteBtn = e.target.closest(".schedule-delete-btn");
-  if (deleteBtn) {
-    const id = deleteBtn.dataset.id;
-    const row = deleteBtn.closest(".schedule-row");
-    const name = row?.querySelector(".schedule-name")?.textContent || id;
+    const checkBtn = e.target.closest(".btn-check-server");
+    if (checkBtn) {
+      const id = checkBtn.dataset.id;
+      const serverIndex = parseInt(checkBtn.dataset.serverIndex, 10);
 
-    const sure = confirm(
-      `Yakin mau hapus "${name}"?\n\nHalaman /${id} bakal langsung ilang dari database. Kalau halamannya masih ke-cache di edge Cloudflare, bisa aja masih kebuka sampai cache-nya abis sendiri.\n\nAksi ini nggak bisa dibatalin.`
-    );
-    if (!sure) return;
+      checkBtn.disabled = true;
+      checkBtn.textContent = "Saving...";
+      try {
+        const res = await fetch(`/api/links/${id}/check`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": verifiedKey,
+          },
+          body: JSON.stringify({ serverIndex }),
+        });
+        if (res.ok) {
+          showToast("Server ditandai udah dicek ✓");
+          loadSchedule();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast(data.error || "Gagal nandain server.");
+          checkBtn.disabled = false;
+          checkBtn.textContent = "✓ Cek";
+        }
+      } catch {
+        showToast("Nggak bisa konek ke server.");
+        checkBtn.disabled = false;
+        checkBtn.textContent = "✓ Cek";
+      }
+      return;
+    }
 
-    deleteBtn.disabled = true;
-    deleteBtn.textContent = "Menghapus...";
-    try {
-      const res = await fetch(`/api/links/${id}`, {
-        method: "DELETE",
-        headers: { "x-admin-key": verifiedKey },
-      });
-      if (res.ok) {
-        showToast("Link dihapus ✓");
-        loadSchedule();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal hapus link.");
+    const deleteBtn = e.target.closest(".delete-btn");
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      const card = deleteBtn.closest(".link-card");
+      const name = card?.querySelector(".link-card-title")?.textContent || id;
+
+      const sure = confirm(`Yakin mau hapus "${name}" (/${id})?\nAksi ini tidak dapat dibatalkan.`);
+      if (!sure) return;
+
+      deleteBtn.disabled = true;
+      deleteBtn.textContent = "Menghapus...";
+      try {
+        const res = await fetch(`/api/links/${id}`, {
+          method: "DELETE",
+          headers: { "x-admin-key": verifiedKey },
+        });
+        if (res.ok) {
+          showToast("Link dihapus ✓");
+          loadSchedule();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast(data.error || "Gagal hapus link.");
+          deleteBtn.disabled = false;
+          deleteBtn.textContent = "🗑 Hapus";
+        }
+      } catch {
+        showToast("Nggak bisa konek ke server.");
         deleteBtn.disabled = false;
-        deleteBtn.textContent = "Hapus";
+        deleteBtn.textContent = "🗑 Hapus";
       }
-    } catch {
-      showToast("Nggak bisa konek ke server.");
-      deleteBtn.disabled = false;
-      deleteBtn.textContent = "Hapus";
     }
-  }
-});
+  });
+}
