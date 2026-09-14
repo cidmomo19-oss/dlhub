@@ -3,171 +3,180 @@
 <head> 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DLHUB — Buat halaman pilihan server download</title>
+<title>DLHUB — Dashboard Manage</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<main class="page">
-  <div id="gateView" class="card">
+
+<main class="manage-page">
+  <!-- Gate (Admin Password) -->
+  <div id="gateView" class="card gate-card">
     <div class="card-body">
-      <h1 class="title">Masukin admin key</h1>
-      <p class="subtitle">Halaman ini terkunci. Masukin admin key buat lanjut bikin halaman download.</p>
+      <h1 class="title">Masukan Admin Key</h1>
+      <p class="subtitle">Silakan masukkan admin key untuk mengelola link download.</p>
 
       <form id="gateForm" novalidate>
         <div class="field">
-          <label for="gateKey">Admin key</label>
-          <input type="password" id="gateKey" placeholder="Admin key" autocomplete="off" autofocus>
+          <label for="gateKey">Admin Key</label>
+          <input type="password" id="gateKey" placeholder="Admin Key" autocomplete="off" autofocus>
         </div>
         <div class="form-error" id="gateError"></div>
-        <button type="submit" class="submit-btn" id="gateSubmitBtn">Masuk</button>
+        <button type="submit" class="submit-btn" id="gateSubmitBtn">Masuk Dashboard</button>
       </form>
     </div>
   </div>
 
-  <div id="createView" style="display:none;">
-    <div class="card">
-      <div class="card-body">
-        <h1 class="title">Buat halaman download</h1>
-        <p class="subtitle">Satu link, banyak server pilihan. Bagikan satu URL — orang lain tinggal pilih mirror yang paling enak buat mereka.</p>
+  <!-- Dashboard Container -->
+  <div id="createView" class="dashboard-container" style="display:none;">
+    <!-- Top Header -->
+    <header class="dash-header">
+      <div class="dash-brand">
+        <h1>Dashboard Manage</h1>
+        <p>Kelola link download &amp; pantau masa kadaluarsa server</p>
+      </div>
 
-        <form id="createForm" novalidate>
-          <div class="field">
-            <label for="title">Nama paket <span class="optional">(opsional)</span></label>
-            <input type="text" id="title" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
-          </div>
+      <!-- Tab Switcher -->
+      <nav class="dash-tabs" role="tablist">
+        <button type="button" class="tab-btn active" id="tabListBtn" data-tab="listTab">
+          📋 Daftar Link <span class="tab-badge" id="scheduleCount">0</span>
+        </button>
+        <button type="button" class="tab-btn" id="tabCreateBtn" data-tab="createTab">
+          ➕ Buat Link Baru
+        </button>
+      </nav>
+    </header>
 
-          <div class="field">
-            <label for="thumbnail">Thumbnail <span class="optional">(opsional, rasio 16:9)</span></label>
-            <input type="url" id="thumbnail" placeholder="https://link-gambar-kamu.jpg">
-            <div class="thumb-preview" id="thumbPreview" style="display:none;">
-              <img id="thumbPreviewImg" alt="Preview thumbnail">
+    <!-- TAB 1: Daftar Link & Status -->
+    <section id="listTab" class="tab-content active">
+      <div id="scheduleAlertArea"></div>
+      <div id="scheduleList" class="schedule-list">
+        <p class="schedule-empty">Memuat data link...</p>
+      </div>
+    </section>
+
+    <!-- TAB 2: Buat Link Baru -->
+    <section id="createTab" class="tab-content" style="display:none;">
+      <div class="dash-card">
+        <div class="card-body">
+          <h2 class="card-title">Buat Halaman Link Baru</h2>
+          <p class="subtitle">Buat halaman download dengan pilihan beberapa server mirror.</p>
+
+          <form id="createForm" novalidate>
+            <div class="field-grid">
+              <div class="field">
+                <label for="title">Nama Paket / Judul <span class="optional">(opsional)</span></label>
+                <input type="text" id="title" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
+              </div>
+
+              <div class="field">
+                <label for="thumbnail">URL Thumbnail <span class="optional">(opsional, 16:9)</span></label>
+                <input type="url" id="thumbnail" placeholder="https://link-gambar.jpg">
+                <div class="thumb-preview" id="thumbPreview" style="display:none;">
+                  <img id="thumbPreviewImg" alt="Preview thumbnail">
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="field">
-            <label for="description">Catatan <span class="optional">(opsional)</span></label>
-            <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link, misal ukuran file atau password"></textarea>
-          </div>
-
-          <div class="field">
-            <label for="expiryDays">Waktu kadaluarsa (hari)</label>
-            <input type="number" id="expiryDays" min="1" max="365" value="30" placeholder="30">
-          </div>
-
-          <div class="field" style="margin-bottom:8px;">
-            <div class="server-field-header">
-              <label style="margin-bottom:0;">Server download</label>
-              <button type="button" class="toggle-mass-btn" id="toggleMassBtn">⚡ Mode Massal (Link | Nama)</button>
+            <div class="field">
+              <label for="description">Catatan / Keterangan <span class="optional">(opsional)</span></label>
+              <textarea id="description" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link (misal password / size)"></textarea>
             </div>
-          </div>
 
-          <div class="mass-input-box" id="massInputBox" style="display:none;">
-            <p class="mass-hint">Format per baris: <code>Link | Nama</code> atau <code>Link</code> saja.<br>Contoh: <code>https://gofile.io/xxx | Gofile</code></p>
-            <textarea id="massInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server&#10;https://pixeldrain.com/u/yyy | Pixeldrain Server"></textarea>
-            <div class="mass-actions">
-              <button type="button" class="mass-apply-btn" id="massApplyBtn">Terapkan Input Massal</button>
+            <div class="field-section-head">
+              <label>Daftar Server Download &amp; Durasi Kadaluarsa (Hari)</label>
+              <button type="button" class="toggle-mass-btn" id="toggleMassBtn">⚡ Mode Massal (Link | Nama | Hari)</button>
             </div>
-          </div>
 
-          <div class="lane-rows" id="laneRows"></div>
-          <button type="button" class="add-lane-btn" id="addLane">+ Tambah server</button>
+            <div class="mass-input-box" id="massInputBox" style="display:none;">
+              <p class="mass-hint">Format per baris: <code>Link | Nama | Hari</code><br>Contoh: <code>https://gofile.io/xxx | Gofile | 14</code></p>
+              <textarea id="massInputText" rows="3" placeholder="https://gofile.io/xxx | Gofile | 14&#10;https://terabox.com/yyy | TeraBox | 30"></textarea>
+              <div class="mass-actions">
+                <button type="button" class="mass-apply-btn" id="massApplyBtn">Terapkan Massal</button>
+              </div>
+            </div>
 
-          <div class="form-error" id="formError"></div>
+            <div class="lane-rows" id="laneRows"></div>
+            <button type="button" class="add-lane-btn" id="addLane">+ Tambah Server</button>
 
-          <button type="submit" class="submit-btn" id="submitBtn">Buat halaman</button>
-        </form>
+            <div class="form-error" id="formError"></div>
 
-        <div class="result-box" id="resultBox">
-          <p class="result-label">✓ Halaman berhasil dibuat</p>
-          <div class="result-link-row">
-            <input type="text" id="resultLink" readonly>
-          </div>
-          <div class="result-actions">
-            <button type="button" class="primary" id="copyBtn">Salin link</button>
-            <a href="#" target="_blank" rel="noopener" id="openBtn">Buka halaman</a>
-            <button type="button" id="resetBtn">Buat lagi</button>
+            <button type="submit" class="submit-btn" id="submitBtn">Buat Halaman Download</button>
+          </form>
+
+          <div class="result-box" id="resultBox">
+            <p class="result-label">✓ Halaman Berhasil Dibuat!</p>
+            <div class="result-link-row">
+              <input type="text" id="resultLink" readonly>
+              <button type="button" class="primary" id="copyBtn">Salin Link</button>
+            </div>
+            <div class="result-actions">
+              <a href="#" target="_blank" rel="noopener" id="openBtn" class="btn-secondary">Buka Halaman</a>
+              <button type="button" id="resetBtn" class="btn-secondary">Buat Link Lain</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-body">
-        <div class="schedule-head">
-          <h2 class="title">Jadwal cek link</h2>
-          <span class="schedule-count" id="scheduleCount"></span>
-        </div>
-        <p class="subtitle">Waktu kadaluarsa dihitung dari klik terakhir. Jika link tidak diklik dan hampir kadaluarsa (≤ 3 hari), notifikasi akan muncul di sini.</p>
-        <div class="schedule-list" id="scheduleList">
-          <p class="schedule-empty">Memuat...</p>
-        </div>
-      </div>
-    </div>
+    </section>
   </div>
 </main>
 
 <!-- Modal Edit Link -->
 <div class="modal-overlay" id="editModal" style="display:none;">
-  <div class="modal-card card">
-    <div class="card-body">
-      <div class="modal-head">
-        <h2 class="title" style="margin-bottom:0;">Edit halaman download</h2>
-        <button type="button" class="modal-close-btn" id="editModalCloseBtn" aria-label="Tutup">×</button>
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h2 class="title" style="margin-bottom:2px;">Edit Link Download</h2>
+        <span class="modal-subtext">ID Link: <code id="editLinkId"></code></span>
       </div>
-      <p class="subtitle" style="margin-top:6px; margin-bottom:16px;">Ubah nama, thumbnail, catatan, durasi kadaluarsa, atau server download untuk link <code id="editLinkId"></code>.</p>
+      <button type="button" class="modal-close-btn" id="editModalCloseBtn" aria-label="Tutup">×</button>
+    </div>
 
-      <form id="editForm" novalidate>
+    <form id="editForm" novalidate style="margin-top:16px;">
+      <div class="field-grid">
         <div class="field">
-          <label for="editTitle">Nama paket <span class="optional">(opsional)</span></label>
-          <input type="text" id="editTitle" maxlength="100" placeholder="Contoh: Video Tutorial Part 1">
+          <label for="editTitle">Nama Paket / Judul</label>
+          <input type="text" id="editTitle" maxlength="100">
         </div>
 
         <div class="field">
-          <label for="editThumbnail">Thumbnail <span class="optional">(opsional, rasio 16:9)</span></label>
-          <input type="url" id="editThumbnail" placeholder="https://link-gambar-kamu.jpg">
+          <label for="editThumbnail">URL Thumbnail</label>
+          <input type="url" id="editThumbnail">
           <div class="thumb-preview" id="editThumbPreview" style="display:none;">
             <img id="editThumbPreviewImg" alt="Preview thumbnail">
           </div>
         </div>
+      </div>
 
-        <div class="field">
-          <label for="editDescription">Catatan <span class="optional">(opsional)</span></label>
-          <textarea id="editDescription" rows="2" maxlength="300" placeholder="Info tambahan buat penerima link"></textarea>
+      <div class="field">
+        <label for="editDescription">Catatan</label>
+        <textarea id="editDescription" rows="2" maxlength="300"></textarea>
+      </div>
+
+      <div class="field-section-head">
+        <label>Daftar Server Download &amp; Durasi Kadaluarsa (Hari)</label>
+        <button type="button" class="toggle-mass-btn" id="editToggleMassBtn">⚡ Mode Massal</button>
+      </div>
+
+      <div class="mass-input-box" id="editMassInputBox" style="display:none;">
+        <p class="mass-hint">Format per baris: <code>Link | Nama | Hari</code></p>
+        <textarea id="editMassInputText" rows="3"></textarea>
+        <div class="mass-actions">
+          <button type="button" class="mass-apply-btn" id="editMassApplyBtn">Terapkan Massal</button>
         </div>
+      </div>
 
-        <div class="field">
-          <label for="editExpiryDays">Waktu kadaluarsa (hari)</label>
-          <input type="number" id="editExpiryDays" min="1" max="365" value="30" placeholder="30">
-        </div>
+      <div class="lane-rows" id="editLaneRows"></div>
+      <button type="button" class="add-lane-btn" id="editAddLane">+ Tambah Server</button>
 
-        <div class="field" style="margin-bottom:8px;">
-          <div class="server-field-header">
-            <label style="margin-bottom:0;">Server download</label>
-            <button type="button" class="toggle-mass-btn" id="editToggleMassBtn">⚡ Mode Massal (Link | Nama)</button>
-          </div>
-        </div>
+      <div class="form-error" id="editFormError"></div>
 
-        <div class="mass-input-box" id="editMassInputBox" style="display:none;">
-          <p class="mass-hint">Format per baris: <code>Link | Nama</code> atau <code>Link</code> saja.</p>
-          <textarea id="editMassInputText" rows="4" placeholder="https://gofile.io/xxx | Gofile Server"></textarea>
-          <div class="mass-actions">
-            <button type="button" class="mass-apply-btn" id="editMassApplyBtn">Terapkan Input Massal</button>
-          </div>
-        </div>
-
-        <div class="lane-rows" id="editLaneRows"></div>
-        <button type="button" class="add-lane-btn" id="editAddLane">+ Tambah server</button>
-
-        <div class="form-error" id="editFormError"></div>
-
-        <div class="modal-actions">
-          <button type="button" class="modal-cancel-btn" id="editCancelBtn">Batal</button>
-          <button type="submit" class="submit-btn" id="editSubmitBtn">Simpan Perubahan</button>
-        </div>
-      </form>
-    </div>
+      <div class="modal-actions">
+        <button type="button" class="modal-cancel-btn" id="editCancelBtn">Batal</button>
+        <button type="submit" class="submit-btn" id="editSubmitBtn">Simpan Perubahan</button>
+      </div>
+    </form>
   </div>
 </div>
 

@@ -1,30 +1,18 @@
 import { escapeHtml } from "./_lib/util.js";
 import { getStrings, getLocale } from "./_lib/i18n.js";
 
-// File statis (style.css, app.js, favicon.svg, dst) sudah otomatis dilayani
-// langsung dari /public oleh Cloudflare Pages, jadi request itu nggak pernah
-// nyampe ke Function ini — nggak makan kuota.
-
 export async function onRequestGet(context) {
   const { request, env, params } = context;
   const cache = caches.default;
 
-  // Negara visitor dari geo IP bawaan Cloudflare (request.cf.country).
-  // Cuma keisi di Cloudflare edge asli — pas local dev (`wrangler pages
-  // dev` tanpa --remote) biasanya kosong, jadi default-nya jatuh ke Inggris.
   const country = request.cf?.country;
   const locale = getLocale(country);
   const t = getStrings(country);
 
-  // Konten beda per bahasa, jadi cache key HARUS ikut beda per bahasa juga
-  // — kalau nggak, visitor Indonesia & luar bisa "ketuker" kebagian cache
-  // punya bahasa lain di edge colo yang sama. URL asli yang dilihat
-  // visitor tetap bersih, ini cuma internal buat cache.
   const cacheUrl = new URL(request.url);
   cacheUrl.searchParams.set("__lang", locale);
   const cacheKey = new Request(cacheUrl.toString(), request);
 
-  // 1) Cek cache edge dulu. Kalau HIT, langsung balikin — nol query ke D1.
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
@@ -43,7 +31,6 @@ export async function onRequestGet(context) {
     .first();
 
   if (!row) {
-    // Cache pendek buat 404, biar ID ngasal/nyasar nggak terus-terusan hit D1
     response = htmlResponse(renderNotFound(t, id), 404, "public, max-age=120");
   } else {
     let servers = [];
@@ -56,15 +43,9 @@ export async function onRequestGet(context) {
     response = htmlResponse(
       renderPage(t, row, servers),
       200,
-      // Halaman dianggap tetap/immutable begitu dibuat -> cache lama & agresif.
-      // Kalau nanti nambah fitur edit, purge cache URL-nya lewat dashboard
-      // Cloudflare (Caching -> Configuration -> Purge by URL).
       "public, max-age=31536000, s-maxage=31536000, immutable"
     );
 
-    // Best-effort view counter. Ini CUMA jalan pas cache MISS, jadi setelah
-    // halaman "dingin" di edge cache, angka views nggak lagi nambah persis
-    // per-visit. Trade-off sadar demi hemat kuota D1 write.
     context.waitUntil(
       env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run()
     );
@@ -97,27 +78,6 @@ function layout({ title, body, htmlLang }) {
 </head>
 <body>
 ${body}
-<script>
-document.addEventListener('click', function(e) {
-  var btn = e.target.closest('.server-btn');
-  if (btn) {
-    var id = btn.getAttribute('data-id');
-    if (id) {
-      var payload = JSON.stringify({ id: id });
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/click', payload);
-      } else {
-        fetch('/api/click', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-          keepalive: true
-        });
-      }
-    }
-  }
-});
-</script>
 </body>
 </html>`;
 }
@@ -132,8 +92,8 @@ function renderPage(t, row, servers) {
 
   const items = servers
     .map(
-      (s) => `
-      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow" data-id="${escapeHtml(row.id)}">
+      (s, idx) => `
+      <a class="server-btn" href="/go/${escapeHtml(row.id)}/${idx}" target="_blank" rel="noopener noreferrer nofollow" data-id="${escapeHtml(row.id)}" data-index="${idx}">
         <span class="server-btn-label">${escapeHtml(s.label)}</span>
         <span class="server-btn-icon" aria-hidden="true">${downloadIcon}</span>
       </a>`
