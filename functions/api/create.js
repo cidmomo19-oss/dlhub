@@ -5,6 +5,9 @@ const MAX_SERVERS = 15;
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  // ADMIN_KEY WAJIB di-set di Cloudflare Pages -> Settings -> Environment
+  // variables. Tanpa ini, endpoint create ditutup total (nggak ada mode
+  // "terbuka buat semua orang" lagi).
   const authError = checkAdmin(request, env);
   if (authError) return authError;
 
@@ -15,7 +18,7 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: "Body request bukan JSON yang valid." }, 400);
   }
 
-  const { title, description, thumbnail, servers } = body || {};
+  const { title, description, thumbnail, servers, expiry_days } = body || {};
 
   if (!Array.isArray(servers) || servers.length === 0) {
     return jsonResponse({ error: "Minimal harus ada 1 server." }, 400);
@@ -24,19 +27,13 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: `Maksimal ${MAX_SERVERS} server per halaman.` }, 400);
   }
 
-  const now = Date.now();
   const cleanServers = [];
   for (const s of servers) {
     if (!s || !isSafeUrl(s.url)) continue;
-    const expiryDaysInput = parseInt(s.expiry_days, 10);
-    const expiryDays = !isNaN(expiryDaysInput) && expiryDaysInput > 0 ? expiryDaysInput : 30;
-
     cleanServers.push({
       label: String(s.label || "Download").trim().slice(0, 40) || "Download",
       url: new URL(s.url).toString(),
       color: isHexColor(s.color) ? s.color : "#ff8a1e",
-      expiry_days: expiryDays,
-      last_clicked_at: now,
     });
   }
 
@@ -50,6 +47,9 @@ export async function onRequestPost(context) {
   }
   const cleanThumbnail = thumbnailValue ? new URL(thumbnailValue).toString() : "";
 
+  const expiryDaysParsed = parseInt(expiry_days, 10);
+  const expiryDays = !isNaN(expiryDaysParsed) && expiryDaysParsed > 0 ? expiryDaysParsed : 30;
+
   if (!env.DB) {
     return jsonResponse(
       { error: "D1 belum ke-bind. Set binding 'DB' di Cloudflare Pages -> Settings -> Functions." },
@@ -57,6 +57,7 @@ export async function onRequestPost(context) {
     );
   }
 
+  // Generate ID unik, coba ulang kalau kebetulan bentrok
   let id = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     const candidate = generateId(7);
@@ -70,7 +71,7 @@ export async function onRequestPost(context) {
 
   await env.DB.prepare(
     `INSERT INTO links (id, title, description, thumbnail, servers, created_at, last_checked_at, expiry_days, views)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 30, 0)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`
   )
     .bind(
       id,
@@ -78,8 +79,9 @@ export async function onRequestPost(context) {
       String(description || "").trim().slice(0, 300),
       cleanThumbnail,
       JSON.stringify(cleanServers),
-      now,
-      now
+      Date.now(),
+      Date.now(),
+      expiryDays
     )
     .run();
 
