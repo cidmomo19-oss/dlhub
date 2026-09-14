@@ -19,6 +19,9 @@ const STRINGS = {
     backLink: "← Buat halaman baru",
     errorPageTitle: "Error — DLHUB",
     errorTitle: "Terjadi kesalahan",
+    adblockTitle: "Pop-up / AdBlock Terdeteksi",
+    adblockDesc: "Browser Anda memblokir pembukaan tab baru. Harap <strong>matikan AdBlock / izinkan Pop-up</strong> pada browser Anda untuk melanjutkan akses link download, atau gunakan browser <strong>Google Chrome</strong>.",
+    adblockRetryBtn: "Saya Sudah Matikan / Coba Lagi",
   },
   en: {
     htmlLang: "en",
@@ -32,16 +35,41 @@ const STRINGS = {
     backLink: "← Back to home",
     errorPageTitle: "Error — DLHUB",
     errorTitle: "Something went wrong",
+    adblockTitle: "Pop-up / AdBlock Detected",
+    adblockDesc: "Your browser blocked opening a new tab. Please <strong>disable AdBlock / allow Pop-ups</strong> on your browser to proceed to download, or use <strong>Google Chrome</strong> browser.",
+    adblockRetryBtn: "I Disabled It / Try Again",
   },
 };
 
-// country = ISO 3166-1 alpha-2 kode negara dari request.cf.country
-// (Cloudflare ngisi ini otomatis berdasarkan IP visitor). Kalau nggak ada
-// (misal pas local dev tanpa emulasi geo), default-nya Inggris.
-export function getStrings(country) {
-  return country === "ID" ? STRINGS.id : STRINGS.en;
+export function getLocaleFromRequest(request) {
+  const country = request?.cf?.country;
+  if (country === "ID") {
+    return "id";
+  }
+
+  const acceptLang = request?.headers?.get("accept-language") || "";
+  if (acceptLang.toLowerCase().includes("id")) {
+    return "id";
+  }
+
+  if (country && country !== "ID") {
+    return "en";
+  }
+
+  return "en";
 }
 
-export function getLocale(country) {
-  return country === "ID" ? "id" : "en";
+export function getStrings(countryOrRequest) {
+  if (typeof countryOrRequest === "object" && countryOrRequest !== null) {
+    const locale = getLocaleFromRequest(countryOrRequest);
+    return STRINGS[locale];
+  }
+  return countryOrRequest === "ID" ? STRINGS.id : STRINGS.en;
+}
+
+export function getLocale(countryOrRequest) {
+  if (typeof countryOrRequest === "object" && countryOrRequest !== null) {
+    return getLocaleFromRequest(countryOrRequest);
+  }
+  return countryOrRequest === "ID" ? "id" : "en";
 }

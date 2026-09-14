@@ -5,9 +5,6 @@ const MAX_SERVERS = 15;
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // ADMIN_KEY WAJIB di-set di Cloudflare Pages -> Settings -> Environment
-  // variables. Tanpa ini, endpoint create ditutup total (nggak ada mode
-  // "terbuka buat semua orang" lagi).
   const authError = checkAdmin(request, env);
   if (authError) return authError;
 
@@ -27,13 +24,20 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: `Maksimal ${MAX_SERVERS} server per halaman.` }, 400);
   }
 
+  const now = Date.now();
   const cleanServers = [];
   for (const s of servers) {
     if (!s || !isSafeUrl(s.url)) continue;
+    const expParsed = parseInt(s.expiry_days, 10);
+    const expDays = !isNaN(expParsed) && expParsed > 0 ? expParsed : (parseInt(expiry_days, 10) || 30);
+    const lastClick = typeof s.last_clicked_at === "number" ? s.last_clicked_at : now;
+
     cleanServers.push({
       label: String(s.label || "Download").trim().slice(0, 40) || "Download",
       url: new URL(s.url).toString(),
       color: isHexColor(s.color) ? s.color : "#ff8a1e",
+      expiry_days: expDays,
+      last_clicked_at: lastClick,
     });
   }
 
@@ -57,7 +61,6 @@ export async function onRequestPost(context) {
     );
   }
 
-  // Generate ID unik, coba ulang kalau kebetulan bentrok
   let id = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     const candidate = generateId(7);
@@ -79,8 +82,8 @@ export async function onRequestPost(context) {
       String(description || "").trim().slice(0, 300),
       cleanThumbnail,
       JSON.stringify(cleanServers),
-      Date.now(),
-      Date.now(),
+      now,
+      now,
       expiryDays
     )
     .run();

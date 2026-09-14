@@ -1,30 +1,19 @@
 import { escapeHtml } from "./_lib/util.js";
 import { getStrings, getLocale } from "./_lib/i18n.js";
 
-// File statis (style.css, app.js, favicon.svg, dst) sudah otomatis dilayani
-// langsung dari /public oleh Cloudflare Pages, jadi request itu nggak pernah
-// nyampe ke Function ini — nggak makan kuota.
-
 export async function onRequestGet(context) {
   const { request, env, params } = context;
   const cache = caches.default;
 
-  // Negara visitor dari geo IP bawaan Cloudflare (request.cf.country).
-  // Cuma keisi di Cloudflare edge asli — pas local dev (`wrangler pages
-  // dev` tanpa --remote) biasanya kosong, jadi default-nya jatuh ke Inggris.
-  const country = request.cf?.country;
-  const locale = getLocale(country);
-  const t = getStrings(country);
+  const locale = getLocale(request);
+  const t = getStrings(request);
 
-  // Konten beda per bahasa, jadi cache key HARUS ikut beda per bahasa juga
-  // — kalau nggak, visitor Indonesia & luar bisa "ketuker" kebagian cache
-  // punya bahasa lain di edge colo yang sama. URL asli yang dilihat
-  // visitor tetap bersih, ini cuma internal buat cache.
   const cacheUrl = new URL(request.url);
   cacheUrl.searchParams.set("__lang", locale);
-  const cacheKey = new Request(cacheUrl.toString(), request);
+  const cacheKey = new Request(cacheUrl.toString(), {
+    headers: request.headers,
+  });
 
-  // 1) Cek cache edge dulu. Kalau HIT, langsung balikin — nol query ke D1.
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
@@ -43,7 +32,6 @@ export async function onRequestGet(context) {
     .first();
 
   if (!row) {
-    // Cache pendek buat 404, biar ID ngasal/nyasar nggak terus-terusan hit D1
     response = htmlResponse(renderNotFound(t, id), 404, "public, max-age=120");
   } else {
     let servers = [];
@@ -56,15 +44,9 @@ export async function onRequestGet(context) {
     response = htmlResponse(
       renderPage(t, row, servers),
       200,
-      // Halaman dianggap tetap/immutable begitu dibuat -> cache lama & agresif.
-      // Kalau nanti nambah fitur edit, purge cache URL-nya lewat dashboard
-      // Cloudflare (Caching -> Configuration -> Purge by URL).
       "public, max-age=31536000, s-maxage=31536000, immutable"
     );
 
-    // Best-effort view counter. Ini CUMA jalan pas cache MISS, jadi setelah
-    // halaman "dingin" di edge cache, angka views nggak lagi nambah persis
-    // per-visit. Trade-off sadar demi hemat kuota D1 write.
     context.waitUntil(
       env.DB.prepare("UPDATE links SET views = views + 1 WHERE id = ?").bind(id).run()
     );
@@ -84,7 +66,11 @@ function htmlResponse(html, status, cacheControl) {
   });
 }
 
-function layout({ title, body, htmlLang }) {
+function layout({ title, body, htmlLang, t }) {
+  const adblockTitle = t?.adblockTitle || "Pop-up / AdBlock Detected";
+  const adblockDesc = t?.adblockDesc || "Your browser blocked opening a new tab. Please disable AdBlock / allow Pop-ups to proceed.";
+  const adblockRetryBtn = t?.adblockRetryBtn || "I Disabled It / Try Again";
+
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">
 <head>
@@ -97,25 +83,73 @@ function layout({ title, body, htmlLang }) {
 </head>
 <body>
 ${body}
+
+<!-- Modal Warning AdBlock / Popup Blocker -->
+<div class="adblock-modal-overlay" id="adblockModal" style="display:none;">
+  <div class="adblock-modal-card">
+    <div class="adblock-icon">🛡️</div>
+    <h2 class="adblock-title">${escapeHtml(adblockTitle)}</h2>
+    <p class="adblock-desc">${adblockDesc}</p>
+    <div class="adblock-actions">
+      <button type="button" class="adblock-btn-retry" id="adblockRetryBtn">${escapeHtml(adblockRetryBtn)}</button>
+    </div>
+  </div>
+</div>
+
 <script>
-document.addEventListener('click', function(e) {
-  var btn = e.target.closest('.server-btn');
-  if (btn) {
-    var id = btn.getAttribute('data-id');
-    if (id) {
-      var payload = JSON.stringify({ id: id });
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/click', payload);
-      } else {
-        fetch('/api/click', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-          keepalive: true
-        });
+document.addEventListener('DOMContentLoaded', function() {
+  var adblockModal = document.getElementById('adblockModal');
+  var adblockRetryBtn = document.getElementById('adblockRetryBtn');
+  var lastTargetUrl = null;
+
+  if (adblockRetryBtn) {
+    adblockRetryBtn.addEventListener('click', function() {
+      adblockModal.style.display = 'none';
+      if (lastTargetUrl) {
+        tryOpenTab(lastTargetUrl);
+      }
+    });
+  }
+
+  function tryOpenTab(downloadUrl) {
+    lastTargetUrl = downloadUrl;
+    var newWin = null;
+    try {
+      newWin = window.open(downloadUrl, '_blank');
+    } catch (err) {
+      newWin = null;
+    }
+
+    // Periksa apakah tab baru berhasil dibuka atau diblokir (popup blocker / adblocker)
+    var isBlocked = false;
+    if (!newWin || typeof newWin === 'undefined') {
+      isBlocked = true;
+    } else {
+      try {
+        if (newWin.closed || typeof newWin.closed === 'undefined') {
+          isBlocked = true;
+        }
+      } catch (e) {
+        isBlocked = false;
       }
     }
+
+    if (isBlocked) {
+      if (adblockModal) adblockModal.style.display = 'flex';
+    } else {
+      // Tab baru berhasil terbuka, alihkan tab lama ke iklan
+      window.location.href = 'https://loix.lol/url';
+    }
   }
+
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.server-btn');
+    if (btn) {
+      e.preventDefault();
+      var downloadUrl = btn.getAttribute('data-href') || btn.getAttribute('href');
+      tryOpenTab(downloadUrl);
+    }
+  });
 });
 </script>
 </body>
@@ -132,11 +166,11 @@ function renderPage(t, row, servers) {
 
   const items = servers
     .map(
-      (s) => `
-      <a class="server-btn" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer nofollow" data-id="${escapeHtml(row.id)}">
+      (s, idx) => `
+      <button type="button" class="server-btn" data-href="/go/${escapeHtml(row.id)}/${idx}" data-id="${escapeHtml(row.id)}" data-index="${idx}">
         <span class="server-btn-label">${escapeHtml(s.label)}</span>
         <span class="server-btn-icon" aria-hidden="true">${downloadIcon}</span>
-      </a>`
+      </button>`
     )
     .join("");
 
@@ -162,7 +196,7 @@ function renderPage(t, row, servers) {
     </div>
   </main>`;
 
-  return layout({ title: `${title} — ${t.pageTitleSuffix}`, body, htmlLang: t.htmlLang });
+  return layout({ title: `${title} — ${t.pageTitleSuffix}`, body, htmlLang: t.htmlLang, t });
 }
 
 function renderNotFound(t, id) {
@@ -176,7 +210,7 @@ function renderNotFound(t, id) {
       </div>
     </div>
   </main>`;
-  return layout({ title: t.notFoundPageTitle, body, htmlLang: t.htmlLang });
+  return layout({ title: t.notFoundPageTitle, body, htmlLang: t.htmlLang, t });
 }
 
 function renderError(t, message) {
@@ -189,5 +223,5 @@ function renderError(t, message) {
       </div>
     </div>
   </main>`;
-  return layout({ title: t.errorPageTitle, body, htmlLang: t.htmlLang });
+  return layout({ title: t.errorPageTitle, body, htmlLang: t.htmlLang, t });
 }

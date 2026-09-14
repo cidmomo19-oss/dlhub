@@ -14,15 +14,37 @@ export async function onRequestPost(context) {
   }
 
   const now = Date.now();
-  const result = await env.DB.prepare("UPDATE links SET last_checked_at = ? WHERE id = ?")
-    .bind(now, params.id)
-    .run();
+  let reqData = {};
+  try {
+    reqData = await request.json();
+  } catch {
+    reqData = {};
+  }
 
-  if (!result.meta || result.meta.changes === 0) {
+  const row = await env.DB.prepare("SELECT servers FROM links WHERE id = ?")
+    .bind(params.id)
+    .first();
+
+  if (!row) {
     return jsonResponse({ error: "Link nggak ketemu." }, 404);
   }
 
-  return jsonResponse({ id: params.id, last_checked_at: now });
+  let servers = [];
+  try {
+    servers = JSON.parse(row.servers);
+  } catch {
+    servers = [];
+  }
+
+  if (typeof reqData.serverIndex === "number" && servers[reqData.serverIndex]) {
+    servers[reqData.serverIndex].last_clicked_at = now;
+  }
+
+  await env.DB.prepare("UPDATE links SET servers = ?, last_checked_at = ? WHERE id = ?")
+    .bind(JSON.stringify(servers), now, params.id)
+    .run();
+
+  return jsonResponse({ id: params.id, last_checked_at: now, servers });
 }
 
 export async function onRequestGet() {

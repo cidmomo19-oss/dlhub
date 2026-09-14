@@ -58,9 +58,16 @@ export async function onRequestPut(context) {
     );
   }
 
-  const existing = await env.DB.prepare("SELECT id FROM links WHERE id = ?").bind(params.id).first();
-  if (!existing) {
+  const existingRow = await env.DB.prepare("SELECT id, servers, created_at, last_checked_at FROM links WHERE id = ?").bind(params.id).first();
+  if (!existingRow) {
     return jsonResponse({ error: "Link nggak ketemu." }, 404);
+  }
+
+  let oldServers = [];
+  try {
+    oldServers = JSON.parse(existingRow.servers);
+  } catch {
+    oldServers = [];
   }
 
   let body;
@@ -79,13 +86,22 @@ export async function onRequestPut(context) {
     return jsonResponse({ error: `Maksimal ${MAX_SERVERS} server per halaman.` }, 400);
   }
 
+  const now = Date.now();
   const cleanServers = [];
-  for (const s of servers) {
+  for (let i = 0; i < servers.length; i++) {
+    const s = servers[i];
     if (!s || !isSafeUrl(s.url)) continue;
+    const expParsed = parseInt(s.expiry_days, 10);
+    const expDays = !isNaN(expParsed) && expParsed > 0 ? expParsed : (parseInt(expiry_days, 10) || 30);
+    const oldS = oldServers[i] || {};
+    const lastClick = typeof s.last_clicked_at === "number" ? s.last_clicked_at : (typeof oldS.last_clicked_at === "number" ? oldS.last_clicked_at : now);
+
     cleanServers.push({
       label: String(s.label || "Download").trim().slice(0, 40) || "Download",
       url: new URL(s.url).toString(),
       color: isHexColor(s.color) ? s.color : "#ff8a1e",
+      expiry_days: expDays,
+      last_clicked_at: lastClick,
     });
   }
 
