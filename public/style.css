@@ -697,6 +697,74 @@ a { color: inherit; }
   margin: 0 auto;
 }
 
+/* ---------- AdBlock / Popup Blocker Modal ---------- */
+
+.adblock-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 200;
+}
+
+.adblock-modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 28px 22px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 60px -20px rgba(0,0,0,0.8);
+  animation: fade .25s ease both;
+}
+
+.adblock-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.adblock-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 10px;
+}
+
+.adblock-desc {
+  font-size: 13.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.adblock-desc strong {
+  color: var(--warning);
+}
+
+.adblock-btn-retry {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter .15s ease;
+}
+
+.adblock-btn-retry:hover {
+  filter: brightness(1.1);
+}
+
 /* ---------- Modal Edit Link ---------- */
 
 .modal-overlay {

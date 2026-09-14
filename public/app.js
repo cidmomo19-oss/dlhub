@@ -794,8 +794,8 @@ if (scheduleList) {
     const deleteBtn = e.target.closest(".delete-btn");
     if (deleteBtn) {
       const id = deleteBtn.dataset.id;
-      const card = deleteBtn.closest(".link-card");
-      const name = card?.querySelector(".link-card-title")?.textContent || id;
+      const card = deleteBtn.closest(".manage-card");
+      const name = card?.querySelector(".manage-card-title")?.textContent || id;
 
       const sure = confirm(`Yakin mau hapus "${name}" (/${id})?\nAksi ini tidak dapat dibatalkan.`);
       if (!sure) return;

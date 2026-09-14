@@ -78,19 +78,73 @@ function layout({ title, body, htmlLang }) {
 </head>
 <body>
 ${body}
+
+<!-- Modal Warning AdBlock / Popup Blocker -->
+<div class="adblock-modal-overlay" id="adblockModal" style="display:none;">
+  <div class="adblock-modal-card">
+    <div class="adblock-icon">🛡️</div>
+    <h2 class="adblock-title">Pop-up / AdBlock Terdeteksi</h2>
+    <p class="adblock-desc">
+      Browser Anda memblokir pembukaan tab baru. Harap <strong>matikan AdBlock / izinkan Pop-up</strong> pada browser Anda untuk melanjutkan akses link download, atau gunakan browser <strong>Google Chrome</strong>.
+    </p>
+    <div class="adblock-actions">
+      <button type="button" class="adblock-btn-retry" id="adblockRetryBtn">Saya Sudah Matikan / Coba Lagi</button>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  var adblockModal = document.getElementById('adblockModal');
+  var adblockRetryBtn = document.getElementById('adblockRetryBtn');
+  var lastTargetUrl = null;
+
+  if (adblockRetryBtn) {
+    adblockRetryBtn.addEventListener('click', function() {
+      adblockModal.style.display = 'none';
+      if (lastTargetUrl) {
+        tryOpenTab(lastTargetUrl);
+      }
+    });
+  }
+
+  function tryOpenTab(downloadUrl) {
+    lastTargetUrl = downloadUrl;
+    var newWin = null;
+    try {
+      newWin = window.open(downloadUrl, '_blank');
+    } catch (err) {
+      newWin = null;
+    }
+
+    // Periksa apakah tab baru berhasil dibuka atau diblokir (popup blocker / adblocker)
+    var isBlocked = false;
+    if (!newWin || typeof newWin === 'undefined') {
+      isBlocked = true;
+    } else {
+      try {
+        if (newWin.closed || typeof newWin.closed === 'undefined') {
+          isBlocked = true;
+        }
+      } catch (e) {
+        isBlocked = false;
+      }
+    }
+
+    if (isBlocked) {
+      if (adblockModal) adblockModal.style.display = 'flex';
+    } else {
+      // Tab baru berhasil terbuka, alihkan tab lama ke iklan
+      window.location.href = 'https://loix.lol/url';
+    }
+  }
+
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('.server-btn');
     if (btn) {
       e.preventDefault();
-      var downloadUrl = btn.getAttribute('href');
-
-      // 1. Buka link download server di TAB BARU
-      window.open(downloadUrl, '_blank');
-
-      // 2. Tab LAMA (saat ini) langsung diarahkan ke IKLAN
-      window.location.href = 'https://loix.lol/url';
+      var downloadUrl = btn.getAttribute('data-href') || btn.getAttribute('href');
+      tryOpenTab(downloadUrl);
     }
   });
 });
@@ -110,10 +164,10 @@ function renderPage(t, row, servers) {
   const items = servers
     .map(
       (s, idx) => `
-      <a class="server-btn" href="/go/${escapeHtml(row.id)}/${idx}" target="_blank" rel="noopener noreferrer nofollow" data-id="${escapeHtml(row.id)}" data-index="${idx}">
+      <button type="button" class="server-btn" data-href="/go/${escapeHtml(row.id)}/${idx}" data-id="${escapeHtml(row.id)}" data-index="${idx}">
         <span class="server-btn-label">${escapeHtml(s.label)}</span>
         <span class="server-btn-icon" aria-hidden="true">${downloadIcon}</span>
-      </a>`
+      </button>`
     )
     .join("");
 
