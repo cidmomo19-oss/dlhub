@@ -684,14 +684,10 @@ function renderSchedule(links) {
             totalAlertServers++;
           }
           return `
-            <div class="server-item-row ${st.isAlert ? "status-alert" : ""}">
-              <div class="server-info">
-                <span class="server-name">${escapeHtmlClient(s.label)}</span>
-                <span class="badge-status ${st.cls}">${st.text}</span>
-              </div>
-              <button type="button" class="btn-check-server" data-id="${l.id}" data-server-index="${idx}">
-                ✓ Cek
-              </button>
+            <div class="srv-chip ${st.cls}">
+              <span class="srv-name">${escapeHtmlClient(s.label)}</span>
+              <span class="srv-badge">${st.text}</span>
+              <button type="button" class="btn-check-server" data-id="${l.id}" data-server-index="${idx}">✓ Cek</button>
             </div>
           `;
         })
@@ -699,19 +695,19 @@ function renderSchedule(links) {
 
       const titleName = (l.title || "").trim() || "Paket Download";
       return `
-      <div class="link-card ${linkHasAlert ? "has-alert" : ""}" data-id="${l.id}">
-        <div class="link-card-head">
-          <div class="link-card-title-group">
-            <h3 class="link-card-title">${escapeHtmlClient(titleName)}</h3>
-            <span class="link-card-id">/${l.id}</span>
+      <div class="manage-card ${linkHasAlert ? "alert-border" : ""}" data-id="${l.id}">
+        <div class="manage-card-top">
+          <div class="manage-card-head">
+            <h3 class="manage-card-title">${escapeHtmlClient(titleName)}</h3>
+            <span class="manage-card-id">/${l.id}</span>
           </div>
-          <div class="link-card-actions">
-            <a href="/${l.id}" target="_blank" rel="noopener" class="btn-icon-text">↗ Buka</a>
-            <button type="button" class="btn-icon-text edit-btn" data-id="${l.id}">✏️ Edit</button>
-            <button type="button" class="btn-icon-text danger delete-btn" data-id="${l.id}">🗑 Hapus</button>
+          <div class="manage-card-btns">
+            <a href="/${l.id}" target="_blank" rel="noopener" class="btn-sm">↗ Buka</a>
+            <button type="button" class="btn-sm edit-btn" data-id="${l.id}">✏️ Edit</button>
+            <button type="button" class="btn-sm btn-danger delete-btn" data-id="${l.id}">🗑 Hapus</button>
           </div>
         </div>
-        <div class="link-servers-grid">${serverItemsHtml}</div>
+        <div class="srv-list">${serverItemsHtml}</div>
       </div>`;
     })
     .join("");

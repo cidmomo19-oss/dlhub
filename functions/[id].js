@@ -78,6 +78,23 @@ function layout({ title, body, htmlLang }) {
 </head>
 <body>
 ${body}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.server-btn');
+    if (btn) {
+      e.preventDefault();
+      var downloadUrl = btn.getAttribute('href');
+
+      // 1. Buka link download server di TAB BARU
+      window.open(downloadUrl, '_blank');
+
+      // 2. Tab LAMA (saat ini) langsung diarahkan ke IKLAN
+      window.location.href = 'https://loix.lol/url';
+    }
+  });
+});
+</script>
 </body>
 </html>`;
 }

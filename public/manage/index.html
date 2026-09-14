@@ -28,40 +28,39 @@
     </div>
   </div>
 
-  <!-- Dashboard Container -->
-  <div id="createView" class="dashboard-container" style="display:none;">
-    <!-- Top Header -->
-    <header class="dash-header">
-      <div class="dash-brand">
-        <h1>Dashboard Manage</h1>
-        <p>Kelola link download &amp; pantau masa kadaluarsa server</p>
+  <!-- Dashboard Main Wrapper -->
+  <div id="createView" class="dash-wrapper" style="display:none;">
+    <!-- Top Bar -->
+    <div class="dash-nav">
+      <div class="dash-nav-brand">
+        <span class="logo">DLHUB</span>
+        <span class="badge-tag">Manage Panel</span>
       </div>
 
-      <!-- Tab Switcher -->
-      <nav class="dash-tabs" role="tablist">
-        <button type="button" class="tab-btn active" id="tabListBtn" data-tab="listTab">
-          📋 Daftar Link <span class="tab-badge" id="scheduleCount">0</span>
+      <div class="dash-nav-tabs">
+        <button type="button" class="nav-tab active" id="tabListBtn">
+          📋 Daftar Link (<span id="scheduleCount">0</span>)
         </button>
-        <button type="button" class="tab-btn" id="tabCreateBtn" data-tab="createTab">
+        <button type="button" class="nav-tab" id="tabCreateBtn">
           ➕ Buat Link Baru
         </button>
-      </nav>
-    </header>
-
-    <!-- TAB 1: Daftar Link & Status -->
-    <section id="listTab" class="tab-content active">
-      <div id="scheduleAlertArea"></div>
-      <div id="scheduleList" class="schedule-list">
-        <p class="schedule-empty">Memuat data link...</p>
       </div>
-    </section>
+    </div>
+
+    <!-- TAB 1: Lista Link -->
+    <div id="listTab" class="tab-pane active">
+      <div id="scheduleAlertArea"></div>
+      <div id="scheduleList" class="link-grid">
+        <p class="empty-state">Memuat data link...</p>
+      </div>
+    </div>
 
     <!-- TAB 2: Buat Link Baru -->
-    <section id="createTab" class="tab-content" style="display:none;">
-      <div class="dash-card">
+    <div id="createTab" class="tab-pane" style="display:none;">
+      <div class="card form-card">
         <div class="card-body">
-          <h2 class="card-title">Buat Halaman Link Baru</h2>
-          <p class="subtitle">Buat halaman download dengan pilihan beberapa server mirror.</p>
+          <h2 class="title" style="font-size:20px; margin-bottom:4px;">Buat Halaman Download Baru</h2>
+          <p class="subtitle">Buat paket link download dengan beberapa pilihan mirror server.</p>
 
           <form id="createForm" novalidate>
             <div class="field-grid">
@@ -118,7 +117,7 @@
           </div>
         </div>
       </div>
-    </section>
+    </div>
   </div>
 </main>
 
