@@ -5,13 +5,14 @@ export async function onRequestGet(context) {
   const { request, env, params } = context;
   const cache = caches.default;
 
-  const country = request.cf?.country;
-  const locale = getLocale(country);
-  const t = getStrings(country);
+  const locale = getLocale(request);
+  const t = getStrings(request);
 
   const cacheUrl = new URL(request.url);
   cacheUrl.searchParams.set("__lang", locale);
-  const cacheKey = new Request(cacheUrl.toString(), request);
+  const cacheKey = new Request(cacheUrl.toString(), {
+    headers: request.headers,
+  });
 
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
@@ -65,7 +66,11 @@ function htmlResponse(html, status, cacheControl) {
   });
 }
 
-function layout({ title, body, htmlLang }) {
+function layout({ title, body, htmlLang, t }) {
+  const adblockTitle = t?.adblockTitle || "Pop-up / AdBlock Detected";
+  const adblockDesc = t?.adblockDesc || "Your browser blocked opening a new tab. Please disable AdBlock / allow Pop-ups to proceed.";
+  const adblockRetryBtn = t?.adblockRetryBtn || "I Disabled It / Try Again";
+
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">
 <head>
@@ -83,12 +88,10 @@ ${body}
 <div class="adblock-modal-overlay" id="adblockModal" style="display:none;">
   <div class="adblock-modal-card">
     <div class="adblock-icon">🛡️</div>
-    <h2 class="adblock-title">Pop-up / AdBlock Terdeteksi</h2>
-    <p class="adblock-desc">
-      Browser Anda memblokir pembukaan tab baru. Harap <strong>matikan AdBlock / izinkan Pop-up</strong> pada browser Anda untuk melanjutkan akses link download, atau gunakan browser <strong>Google Chrome</strong>.
-    </p>
+    <h2 class="adblock-title">${escapeHtml(adblockTitle)}</h2>
+    <p class="adblock-desc">${adblockDesc}</p>
     <div class="adblock-actions">
-      <button type="button" class="adblock-btn-retry" id="adblockRetryBtn">Saya Sudah Matikan / Coba Lagi</button>
+      <button type="button" class="adblock-btn-retry" id="adblockRetryBtn">${escapeHtml(adblockRetryBtn)}</button>
     </div>
   </div>
 </div>
@@ -193,7 +196,7 @@ function renderPage(t, row, servers) {
     </div>
   </main>`;
 
-  return layout({ title: `${title} — ${t.pageTitleSuffix}`, body, htmlLang: t.htmlLang });
+  return layout({ title: `${title} — ${t.pageTitleSuffix}`, body, htmlLang: t.htmlLang, t });
 }
 
 function renderNotFound(t, id) {
@@ -207,7 +210,7 @@ function renderNotFound(t, id) {
       </div>
     </div>
   </main>`;
-  return layout({ title: t.notFoundPageTitle, body, htmlLang: t.htmlLang });
+  return layout({ title: t.notFoundPageTitle, body, htmlLang: t.htmlLang, t });
 }
 
 function renderError(t, message) {
@@ -220,5 +223,5 @@ function renderError(t, message) {
       </div>
     </div>
   </main>`;
-  return layout({ title: t.errorPageTitle, body, htmlLang: t.htmlLang });
+  return layout({ title: t.errorPageTitle, body, htmlLang: t.htmlLang, t });
 }
